@@ -1,0 +1,30 @@
+import http from 'node:http'; import fs from 'node:fs'; import { chromium } from 'playwright';
+import w from './worker.js';
+const kv = new Map();
+const BOARD = { get: async (k, t) => { const v = kv.get(k); return v === undefined ? null : (t === 'json' ? JSON.parse(v) : v); }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); }, list: async ({ prefix }) => ({ keys: [...kv.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }) };
+const env = { BOARD, SYNC_KEY: 'sync', OFFICER_CODE: 'off123', MEMBER_CODE: 'mem456' };
+kv.set('data', fs.readFileSync(process.env.DATA || '../data.json', 'utf8'));
+const page = fs.readFileSync(process.env.PAGE || '../index.html', 'utf8').replace("API_URL = 'https://api.test'", "API_URL = 'http://127.0.0.1:8787'");
+const srv = http.createServer(async (req, res) => {
+  if (req.url === '/page') { res.setHeader('Content-Type', 'text/html'); return res.end(page); }
+  let body = ''; for await (const c of req) body += c;
+  const r = await w.fetch(new Request('http://127.0.0.1:8787' + req.url, { method: req.method, headers: req.headers, body: ['GET','HEAD','OPTIONS'].includes(req.method) ? undefined : body }), env);
+  res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(await r.text());
+}).listen(8787);
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--headless=new'] });
+const p = await b.newPage({ viewport: { width: 1200, height: 900 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto('http://127.0.0.1:8787/page'); await p.waitForTimeout(1500);
+const sync0 = await p.textContent('#sync');
+await p.click('.tab[data-view=canyon]'); await p.click('.nudge [data-member="War-Maker"]'); await p.waitForTimeout(300);
+await p.fill('#ed-code', 'mem456'); await p.press('#ed-code', 'Tab'); await p.waitForTimeout(600);
+await p.fill('#ed-by', 'Joe'); await p.press('#ed-by', 'Tab');
+const hint1 = await p.textContent('#ed-hint'); const slotDisabled = await p.$eval('#ed-slot', e => e.disabled);
+await p.selectOption('#ed-avail', '18:00 only'); await p.waitForTimeout(2500);
+const pend = (await BOARD.list({ prefix: 'edit:' })).keys.length; const e1 = JSON.parse(kv.get((await BOARD.list({ prefix: 'edit:' })).keys[0].name));
+const gapTxt = await p.textContent('#view-canyon .big');
+await p.fill('#ed-code', 'off123'); await p.press('#ed-code', 'Tab'); await p.waitForTimeout(600);
+const slotDisabled2 = await p.$eval('#ed-slot', e => e.disabled);
+await p.selectOption('#ed-slot', 'T2 Sub'); await p.waitForTimeout(2500);
+const pend2 = (await BOARD.list({ prefix: 'edit:' })).keys.length;
+console.log(JSON.stringify({ sync0, hint1, slotDisabled, pend, e1, gapTxt, slotDisabled2, pend2, sync: await p.textContent('#sync'), errs }, null, 1));
+await b.close(); srv.close();

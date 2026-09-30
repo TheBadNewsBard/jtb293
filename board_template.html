@@ -1,0 +1,683 @@
+<title>/*__TITLE__*/JTB 293 Command Board</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: dark-first command console. Sticky top bar with tabs; each tab is a grid of panels.
+   Summary tiles and leadership strip first, detail tables below. */
+:root {
+  color-scheme: dark;
+  --bg: #121517; --panel: #1b2024; --panel-2: #22282d; --line: #2e363c; --line-strong: #3d474f;
+  --fg: #e8e4d9; --fg-2: #a9a498; --fg-3: #75716a;
+  --accent: #d9a441; --accent-ink: #1a1408;
+  --s1: #bf7d1a; --s2: #3f95cf; --s3: #5f9e38;           /* validated categorical: hero, vehicle, other */
+  --good: #5f9e38; --warn: #d9a441; --bad: #d95c4a; --info: #3f95cf;
+  --r5: #e0b04a; --r4: #8fb8d8; --r3: #6b7480;
+  --t1: #bf7d1a; --t2: #3f95cf;
+  --shadow: 0 1px 0 rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --display: "Rajdhani", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light;
+  --bg: #f1eee6; --panel: #fbfaf6; --panel-2: #f3f0e8; --line: #dcd7cb; --line-strong: #c4bfb1;
+  --fg: #1c1a16; --fg-2: #56534b; --fg-3: #8a867c;
+  --accent: #a8731a; --accent-ink: #fff;
+  --s1: #b8791a; --s2: #2f7fb0; --s3: #4f8f2f;
+  --good: #3e8a2a; --warn: #a8731a; --bad: #c2412f; --info: #2f7fb0;
+  --r5: #a8731a; --r4: #3f6f95; --r3: #8a867c; --t1: #b8791a; --t2: #2f7fb0;
+  --shadow: 0 1px 2px rgba(30,25,10,.08), 0 8px 24px -14px rgba(30,25,10,.25);
+} }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f1eee6; --panel: #fbfaf6; --panel-2: #f3f0e8; --line: #dcd7cb; --line-strong: #c4bfb1;
+  --fg: #1c1a16; --fg-2: #56534b; --fg-3: #8a867c;
+  --accent: #a8731a; --accent-ink: #fff;
+  --s1: #b8791a; --s2: #2f7fb0; --s3: #4f8f2f;
+  --good: #3e8a2a; --warn: #a8731a; --bad: #c2412f; --info: #2f7fb0;
+  --r5: #a8731a; --r4: #3f6f95; --r3: #8a867c; --t1: #b8791a; --t2: #2f7fb0;
+  --shadow: 0 1px 2px rgba(30,25,10,.08), 0 8px 24px -14px rgba(30,25,10,.25);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--body); font-variant-numeric: tabular-nums; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--accent); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 48px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h2 { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+h3 { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-2); }
+.eyebrow { font-family: var(--display); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--fg-3); }
+.mono { font-family: var(--mono); }
+
+/* top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1240px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.crest { display: flex; align-items: center; gap: 10px; }
+.crest svg { width: 40px; height: 44px; }
+.crest .name { font-family: var(--display); font-size: 24px; font-weight: 700; line-height: 1; letter-spacing: .04em; }
+.crest .sub { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .12em; }
+.tabs { display: flex; gap: 2px; margin-inline: auto; flex-wrap: wrap; }
+.tab { background: none; border: 1px solid transparent; border-radius: 6px; padding: 7px 12px; font-family: var(--display); font-weight: 600; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-2); cursor: pointer; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--accent-ink); background: var(--accent); }
+.tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
+@media (max-width: 720px) {
+  .top-in { gap: 8px 10px; padding: 8px 12px; }
+  .crest .name { font-size: 20px; } .crest svg { width: 32px; height: 36px; }
+  .tabs { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 6px 8px; font-size: 13px; letter-spacing: .05em; flex: none; }
+  .tools { margin-left: auto; flex-wrap: nowrap; }
+  .search { min-width: 0; flex: 1 1 120px; }
+  .search kbd, .sync span:not(:first-child) { display: none; }
+  .sync { padding: 3px 6px; }
+  .btn { padding: 5px 8px; }
+  .gap { grid-template-columns: 1fr; gap: 6px; }
+  .gap > div:nth-child(2) { order: -1; }
+  .leaders { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .tile .big { font-size: 24px; } .tile .delta { font-size: 11px; flex-wrap: wrap; } .tile .spark { max-width: 100%; }
+  .wrap { padding-block: 12px 40px; }
+  .grid { gap: 10px; }
+  .panel { padding: 12px; border-radius: 8px; }
+  .slotlist { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .nudge { columns: 2 130px; }
+  .drawer .card { width: 100%; border-left: 0; }
+  th, td { padding: 6px 6px; font-size: 12.5px; }
+}
+.search { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; min-width: 200px; min-height: 32px; }
+.search input { background: none; border: 0; outline: none; width: 100%; color: var(--fg); }
+.search kbd { font: 11px var(--mono); color: var(--fg-3); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 5px; }
+.btn { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 13px; color: var(--fg); display: inline-flex; gap: 6px; align-items: center; }
+.btn:hover { border-color: var(--accent); }
+.btn.small { padding: 3px 8px; font-size: 12px; }
+.btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* panels */
+.view[hidden] { display: none; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(12, 1fr); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+.panel > h3 { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.panel > h3 .note { font: 12px var(--body); text-transform: none; letter-spacing: 0; color: var(--fg-3); font-weight: 400; }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c6 { grid-column: span 6; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+@media (max-width: 900px) { .c3 { grid-column: span 6; } .c4 { grid-column: span 6; } .c8 { grid-column: span 12; } .c6 { grid-column: span 12; } }
+@media (max-width: 520px) { .c3 { grid-column: span 6; } .c4 { grid-column: span 12; } }
+
+/* stat tiles */
+.tile .eyebrow { margin-bottom: 4px; }
+.tile .big { font-family: var(--display); font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: .01em; }
+.tile .delta { font-size: 12px; color: var(--fg-2); margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+.up { color: var(--good); } .down { color: var(--bad); }
+.tile .spark { margin-top: 8px; max-width: 100%; height: auto; }
+
+/* leadership */
+.leaders { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.leader { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; background: var(--panel-2); cursor: pointer; border: 1px solid transparent; text-align: left; }
+.leader:hover { border-color: var(--line-strong); }
+.leader .av { width: 44px; height: 48px; flex: none; }
+.leader .nm { font-weight: 600; font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
+.leader .rk { font-size: 11px; color: var(--fg-3); display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+.leader .pw { font-size: 12px; color: var(--fg-2); margin-top: 2px; }
+.chip { display: inline-block; font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .08em; padding: 0 6px; border-radius: 4px; line-height: 16px; text-transform: uppercase; }
+.chip.R5 { background: var(--r5); color: #1a1408; } .chip.R4 { background: var(--r4); color: #0e1a24; } .chip.R3 { background: var(--r3); color: #fff; }
+.chip.title { background: transparent; border: 1px solid var(--line-strong); color: var(--fg-2); font-weight: 600; }
+
+/* charts */
+.chart { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--body); font-size: 11px; fill: var(--fg-3); }
+.chart .lbl { fill: var(--fg-2); }
+.chart .lbl-strong { fill: var(--fg); font-weight: 600; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { stroke: var(--line-strong); stroke-width: 1; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--fg-2); margin-top: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 9px; font-size: 12px; box-shadow: var(--shadow); max-width: 260px; }
+.tip b { display: block; font-weight: 600; }
+.tip[hidden] { display: none; }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { position: sticky; top: 0; background: var(--panel); font-family: var(--display); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-2); cursor: pointer; user-select: none; }
+th:hover { color: var(--fg); }
+th.sorted { color: var(--accent); }
+th:first-child, td:first-child, th.l, td.l { text-align: left; }
+tbody tr:hover { background: var(--panel-2); }
+tbody tr { cursor: pointer; }
+.bar { display: inline-block; height: 8px; border-radius: 2px; background: var(--s1); vertical-align: middle; margin-right: 6px; }
+.bar.v { background: var(--s2); margin-right: 0; margin-left: -6px; }
+.d-up { color: var(--good); } .d-down { color: var(--bad); } .d-flat { color: var(--fg-3); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.filters select { background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; }
+.count { color: var(--fg-3); font-size: 12px; margin-left: auto; }
+
+/* canyon */
+.team { border-top: 3px solid var(--t1); }
+.team.t2 { border-top-color: var(--t2); }
+.team .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.team .head .tot { font-family: var(--display); font-size: 26px; font-weight: 700; }
+.slotlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 3px 10px; margin-top: 8px; }
+.slot { display: flex; justify-content: space-between; gap: 6px; font-size: 12.5px; padding: 3px 6px; border-radius: 4px; }
+.slot:hover { background: var(--panel-2); }
+.slot .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot .n.both::after { content: "B"; font: 600 9px var(--display); color: var(--info); margin-left: 4px; vertical-align: super; }
+.slot .n.override::before { content: "✎ "; color: var(--warn); }
+.slot .v { color: var(--fg-2); }
+.gap { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+.gapbar { height: 14px; border-radius: 4px; background: var(--panel-2); position: relative; overflow: hidden; }
+.gapbar i { position: absolute; top: 0; bottom: 0; }
+.avail { display: flex; height: 16px; border-radius: 4px; overflow: hidden; gap: 2px; margin: 8px 0; }
+.avail i { display: block; }
+.mini { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--fg-2); }
+.nudge { columns: 3 150px; column-gap: 14px; font-size: 12.5px; margin-top: 8px; }
+.nudge div { break-inside: avoid; display: flex; justify-content: space-between; gap: 6px; padding: 2px 0; }
+.nudge .v { color: var(--fg-3); }
+
+/* drawer */
+.drawer { position: fixed; inset: 0; z-index: 40; display: flex; justify-content: flex-end; background: rgba(0,0,0,.45); }
+.drawer[hidden] { display: none; }
+.drawer .card { width: min(440px, 100%); background: var(--panel); border-left: 1px solid var(--line); padding: 18px; overflow-y: auto; padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
+.drawer .hd { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.drawer .hd .av { width: 54px; height: 60px; flex: none; }
+.drawer .hd h2 { text-transform: none; letter-spacing: 0; font-size: 24px; overflow-wrap: anywhere; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; margin-top: 12px; }
+.kv dt { color: var(--fg-3); } .kv dd { margin: 0; text-align: right; }
+.close { margin-left: auto; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 60; box-shadow: var(--shadow); }
+.toast[hidden] { display: none; }
+.sync { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); display: inline-block; }
+.sync.live i { background: var(--good); } .sync.pending i { background: var(--warn); } .sync.err i { background: var(--bad); }
+.edit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; padding: 12px; border-radius: 8px; background: var(--panel-2); }
+.edit label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-3); font-family: var(--display); font-weight: 600; }
+.edit input { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; font-family: var(--body); text-transform: none; letter-spacing: 0; color: var(--fg); min-width: 0; }
+.edit select { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; font-family: var(--body); text-transform: none; letter-spacing: 0; color: var(--fg); }
+.edit .hint { grid-column: 1 / -1; font-size: 12px; color: var(--fg-2); font-family: var(--body); text-transform: none; letter-spacing: 0; }
+.slot .n.pending::after { content: "⟳"; color: var(--warn); margin-left: 4px; font-size: 11px; }
+.qedit { background: none; border: 0; color: var(--fg-3); cursor: pointer; padding: 0 2px; font-size: 12px; }
+.qedit:hover { color: var(--accent); }
+.rules h4 { font-family: var(--display); text-transform: uppercase; letter-spacing: .1em; font-size: 13px; color: var(--accent); margin: 14px 0 6px; }
+.rules table td { white-space: normal; text-align: left; vertical-align: top; font-size: 13px; }
+.rules table td:first-child { font-weight: 600; width: 22%; }
+.foot { color: var(--fg-3); font-size: 12px; margin-top: 20px; }
+@media (prefers-reduced-motion: no-preference) { .tab, .btn, .leader { transition: background .15s, color .15s, border-color .15s; } }
+</style>
+
+<div class="top"><div class="top-in">
+  <div class="crest" id="crest"></div>
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-view="overview" aria-selected="true">Overview</button>
+    <button class="tab" role="tab" data-view="roster">Roster</button>
+    <button class="tab" role="tab" data-view="canyon">Canyon</button>
+    <button class="tab" role="tab" data-view="trends">Trends</button>
+    <button class="tab" role="tab" data-view="rules">Rules</button>
+  </div>
+  <div class="tools">
+    <label class="search"><span aria-hidden="true">⌕</span><input id="q" placeholder="Find a member" aria-label="Find a member" autocomplete="off"><kbd>/</kbd></label>
+    <span class="sync" id="sync" title="Where the numbers come from"><i></i><span>Snapshot</span></span>
+    <button class="btn" id="unit" title="Switch between compact and full numbers">M</button>
+    <button class="btn" id="theme" title="Light / dark">◐</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <section class="view" id="view-overview"></section>
+  <section class="view" id="view-roster" hidden></section>
+  <section class="view" id="view-canyon" hidden></section>
+  <section class="view" id="view-trends" hidden></section>
+  <section class="view" id="view-rules" hidden></section>
+  <p class="foot" id="foot"></p>
+</div>
+<div class="tip" id="tip" hidden></div>
+<div class="drawer" id="drawer" hidden><div class="card" id="drawer-card"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="application/json" id="data">/*__DATA__*/</script>
+<script>
+(function(){
+let D = JSON.parse(document.getElementById('data').textContent);
+const DRIVE = 'Google Drive', BOARD_DATA_ID = '1sHL-C7_3g0XVCclt6qot3mbDc5y-BT1N', INBOX_ID = '13TfoGWTRjdxhU_Ah7j7rQ_WeppX8QTY2';
+const READONLY = /*__READONLY__*/false;   // public copy: no Drive link; editing goes through the board API instead
+const API_URL = '/*__API_URL__*/';           // Cloudflare Worker (blank = public copy is a static snapshot)
+const WEB = READONLY && API_URL.length > 0;
+const AVAIL_OPTIONS = ['', '18:00 only', '23:00 only', 'Both', 'N/A'], SLOT_OPTIONS = ['auto', 'T1 Starter', 'T1 Sub', 'T2 Starter', 'T2 Sub', 'Bench', 'Not available'];
+const $ = (s, el=document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
+
+// ---------- data prep (re-run whenever D changes)
+const sum = (arr, f) => arr.reduce((s,x) => s + (f(x)||0), 0);
+let dates, LATEST, PREV, byDate, latest, prevMap, hist, canyonMap, alliance, A, AP, leaders;
+function prep(){
+  dates = D.dates.slice().sort(); LATEST = dates[dates.length-1]; PREV = dates[dates.length-2];
+  byDate = {}; D.history.forEach(r => { (byDate[r.date] ??= []).push(r); });
+  latest = byDate[LATEST].slice().sort((a,b) => b.hv - a.hv);
+  latest.forEach((m,i) => m.rankHV = i+1);
+  prevMap = {}; (byDate[PREV]||[]).forEach(r => prevMap[r.name] = r);
+  hist = {}; D.history.forEach(r => { (hist[r.name] ??= []).push(r); });
+  Object.values(hist).forEach(a => a.sort((x,y) => x.date < y.date ? -1 : 1));
+  canyonMap = {}; D.canyon.forEach(c => canyonMap[c.name] = c);
+  alliance = dates.map(d => ({ date: d, n: byDate[d].length, total: sum(byDate[d], x=>x.total), hv: sum(byDate[d], x=>x.hv), hero: sum(byDate[d], x=>x.hero), veh: sum(byDate[d], x=>x.veh), struct: sum(byDate[d], x=>x.struct), tech: sum(byDate[d], x=>x.tech), troop: sum(byDate[d], x=>x.troop), kills: sum(byDate[d], x=>x.kills) }));
+  A = alliance[alliance.length-1]; AP = alliance[alliance.length-2];
+  leaders = latest.filter(m => m.rank === 'R5' || m.rank === 'R4').sort((a,b) => (a.rank===b.rank ? b.hv-a.hv : (a.rank==='R5'?-1:1)));
+}
+prep();
+
+// ---------- Canyon model: the same rule the sheet's W17 / S column apply, so edits preview instantly
+function sessKey(s){ s = String(s||''); if (/^Either/.test(s)) return 'Either'; if (/^Both/.test(s)) return 'Both'; if (/^N\/A/.test(s)) return 'N/A'; return s.slice(0,5); }
+function recompute(){
+  const M = D.meta, CS = M.starters, CAP = CS + M.subs, u4 = sessKey(M.t1), u6 = sessKey(M.t2), t2on = M.t2active !== 'N';
+  const hvOf = n => (latest.find(m => m.name === n)||{}).hv || 0;
+  D.canyon.forEach(c => {
+    const u = sessKey(c.avail);
+    const ok1 = u4 === 'Either' ? (u !== '' && u !== 'N/A') : (u === 'Both' || u === u4);
+    const ok2 = t2on && (u6 === 'Either' ? (u !== '' && u !== 'N/A') : (u === 'Both' || u === u6));
+    c.elig = u === '' ? 'No vote' : ok1 && ok2 ? 'Both' : ok1 ? 'Team 1 only' : ok2 ? 'Team 2 only' : 'Not available';
+    c._hv = hvOf(c.name); c.auto = '';
+  });
+  const T = { T1: [], T2: [] };
+  const ord = D.canyon.filter(c => !['No vote','Not available'].includes(c.elig)).sort((a,b) => ((a.elig==='Both')-(b.elig==='Both')) || b._hv - a._hv || (a.name < b.name ? -1 : 1));
+  const sStart = team => team.map(p => p._hv).sort((a,b) => b-a).slice(0, CS).reduce((a,b) => a+b, 0);
+  ord.forEach(p => {
+    const oka = p.elig !== 'Team 2 only' && T.T1.length < CAP, okb = p.elig !== 'Team 1 only' && T.T2.length < CAP; let t;
+    if (oka && okb) { const sa = sStart(T.T1), sb = sStart(T.T2), ga = sStart([...T.T1, p]) - sa, gb = sStart([...T.T2, p]) - sb;
+      t = ((ga>0) !== (gb>0)) ? (ga>0 ? 'T1' : 'T2') : (ga>0 ? (sa <= sb ? 'T1' : 'T2') : (T.T1.length <= T.T2.length ? 'T1' : 'T2')); }
+    else t = oka ? 'T1' : okb ? 'T2' : null;
+    if (t) { T[t].push(p); p.auto = t; } else p.auto = 'Bench';
+  });
+  ['T1','T2'].forEach(t => T[t].slice().sort((a,b) => b._hv - a._hv || (a.name < b.name ? -1 : 1)).forEach((c,i) => c._autoSlot = t + (i < CS ? ' Starter' : ' Sub')));
+  D.canyon.forEach(c => {
+    const autoSlot = c.auto === 'Bench' ? 'Bench' : c.auto ? c._autoSlot : (c.elig === 'Not available' ? 'Not available' : '');
+    c.final = c.manual ? (c.override || c.final) : autoSlot;
+  });
+}
+
+// ---------- formatting
+let compact = ls.get('jtb-unit') !== 'full';
+const fmt = n => n == null || n === '' ? '—' : compact ? (Math.abs(n) >= 1e9 ? (n/1e9).toFixed(2)+'B' : Math.abs(n) >= 1e6 ? (n/1e6).toFixed(1)+'M' : Math.abs(n) >= 1e3 ? (n/1e3).toFixed(0)+'K' : String(n)) : Math.round(n).toLocaleString('en-US');
+const fmtM = n => Math.abs(n) >= 1e9 ? (n/1e9).toFixed(2)+'B' : (n/1e6).toFixed(1)+'M';
+const signed = n => (n > 0 ? '+' : '') + fmt(n);
+const pct = (a,b) => b ? ((a-b)/b*100).toFixed(1)+'%' : '—';
+const dShort = d => new Date(d+'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+const dLong = d => new Date(d+'T12:00:00').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'});
+
+// ---------- avatar: rank-coloured shield with initials (stands in for the in-game portrait)
+function initials(name){ const w = name.replace(/[^\p{L}\p{N} ]/gu,' ').trim().split(/\s+/).filter(Boolean); if(!w.length) return name.slice(0,2); return (w.length>1 ? w[0][0]+w[1][0] : w[0].slice(0,2)).toUpperCase(); }
+function avatar(m, cls='av'){
+  const col = m.rank === 'R5' ? 'var(--r5)' : m.rank === 'R4' ? 'var(--r4)' : 'var(--r3)';
+  const ini = esc(initials(m.name));
+  return `<svg class="${cls}" viewBox="0 0 44 48" aria-hidden="true">
+    <path d="M22 2 41 9v14c0 11-8 19-19 23C11 42 3 34 3 23V9z" fill="${col}" opacity=".18"/>
+    <path d="M22 2 41 9v14c0 11-8 19-19 23C11 42 3 34 3 23V9z" fill="none" stroke="${col}" stroke-width="2"/>
+    <path d="M22 8 35 13v10c0 8-5.5 14-13 17-7.5-3-13-9-13-17V13z" fill="${col}" opacity=".25"/>
+    <text x="22" y="29" text-anchor="middle" font-family="Rajdhani, Arial Narrow, sans-serif" font-weight="700" font-size="${ini.length>2?12:15}" fill="var(--fg)">${ini}</text>
+    <text x="22" y="43" text-anchor="middle" font-family="Rajdhani, Arial Narrow, sans-serif" font-weight="700" font-size="8" fill="${col}">${m.rank}</text></svg>`;
+}
+$('#crest').innerHTML = `<svg viewBox="0 0 44 48" aria-hidden="true"><path d="M22 2 41 9v14c0 11-8 19-19 23C11 42 3 34 3 23V9z" fill="var(--accent)"/><text x="22" y="30" text-anchor="middle" font-family="Rajdhani, Arial Narrow, sans-serif" font-weight="700" font-size="16" fill="var(--accent-ink)">JTB</text></svg>
+  <div><div class="name">JTB 293</div><div class="sub">${READONLY ? 'Alliance board' : 'Command board'} · snapshot ${dShort(LATEST)}</div></div>`;
+
+// ---------- charts (SVG strings) - narrower viewBox on phones so labels stay legible
+const narrow = () => innerWidth < 720;
+const chartW = () => narrow() ? 380 : 640;
+function sparkline(vals, w=120, h=28, col='var(--s1)'){
+  if (vals.length < 2) return '';
+  const min = Math.min(...vals), max = Math.max(...vals), rng = max-min || 1;
+  const pts = vals.map((v,i) => [4 + i*(w-8)/(vals.length-1), h-4 - (v-min)/rng*(h-8)]);
+  const d = pts.map((p,i) => (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const last = pts[pts.length-1];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${d} L${last[0].toFixed(1)} ${h} L4 ${h}Z" fill="${col}" opacity=".12"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3" fill="${col}" stroke="var(--panel)" stroke-width="2"/></svg>`;
+}
+function lineChart(series, labels, opts={}){
+  const W = chartW(), H = narrow() ? 190 : 220, L = narrow() ? 46 : 54, R = 16, T = 14, B = 30;
+  const all = series.flatMap(s => s.vals); const min = Math.min(...all), max = Math.max(...all);
+  const pad = (max-min)*0.15 || max*0.05 || 1; const y0 = min - pad, y1 = max + pad;
+  const x = i => L + i*(W-L-R)/Math.max(1, labels.length-1), y = v => T + (H-T-B) - (v-y0)/(y1-y0)*(H-T-B);
+  const ticks = 4; let g = '';
+  for (let k=0;k<=ticks;k++){ const v = y0 + (y1-y0)*k/ticks; g += `<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${L-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end">${fmtM(v)}</text>`; }
+  labels.forEach((lb,i) => { g += `<text x="${x(i).toFixed(1)}" y="${H-10}" text-anchor="middle">${esc(lb)}</text>`; });
+  series.forEach(s => {
+    const d = s.vals.map((v,i) => (i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+    g += `<path d="${d}" fill="none" stroke="${s.col}" stroke-width="2" stroke-linejoin="round"/>`;
+    s.vals.forEach((v,i) => { g += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i===s.vals.length-1?4.5:3.5}" fill="${s.col}" stroke="var(--panel)" stroke-width="2" data-tip="${esc(s.name)}|${esc(labels[i])}: ${fmt(v)}"/>`; });
+    const li = s.vals.length-1; g += `<text class="lbl-strong" x="${(x(li)-8).toFixed(1)}" y="${(y(s.vals[li])-10).toFixed(1)}" text-anchor="end">${fmtM(s.vals[li])}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
+}
+function hbars(rows, opts={}){ // rows: {label, segs:[{v,col,name}], total, sub}
+  const W = opts.W ? Math.min(opts.W, chartW()) : chartW(), LW = Math.min(opts.labelW || 120, narrow() ? 90 : 120), RW = 56, rh = 22, H = rows.length*rh + 6;
+  const max = Math.max(...rows.map(r => r.total)); const sx = v => v/max*(W-LW-RW-8);
+  let g = '';
+  rows.forEach((r,i) => {
+    const y = 3 + i*rh; let x = LW;
+    g += `<text class="lbl" x="${LW-8}" y="${y+14}" text-anchor="end">${esc(narrow() && r.label.length > 13 ? r.label.slice(0,12)+'…' : r.label)}</text>`;
+    r.segs.forEach((s,k) => { const w = Math.max(0, sx(s.v) - (k?2:0)); g += `<rect x="${(x+(k?2:0)).toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="14" rx="${k===r.segs.length-1?3:0}" fill="${s.col}" data-tip="${esc(r.label)}|${esc(s.name)}: ${fmt(s.v)}${r.sub?' · '+esc(r.sub):''}"/>`; x += sx(s.v); });
+    g += `<text class="lbl-strong" x="${(x+6).toFixed(1)}" y="${y+15}">${fmtM(r.total)}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
+}
+function divergeBars(rows, opts={}){ // rows: {label, v}
+  const W = chartW(), LW = narrow() ? 96 : 130, rh = 22, H = rows.length*rh + 6, mid = LW + (W-LW-70)/2;
+  const max = Math.max(...rows.map(r => Math.abs(r.v))) || 1; const sx = v => Math.abs(v)/max*((W-LW-70)/2 - 4);
+  let g = `<line class="axis" x1="${mid}" x2="${mid}" y1="0" y2="${H}"/>`;
+  rows.forEach((r,i) => {
+    const y = 3 + i*rh, w = sx(r.v), pos = r.v >= 0;
+    g += `<text class="lbl" x="${LW-8}" y="${y+14}" text-anchor="end">${esc(narrow() && r.label.length > 13 ? r.label.slice(0,12)+'…' : r.label)}</text>`;
+    g += `<rect x="${(pos?mid+1:mid-1-w).toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="14" rx="3" fill="${pos?'var(--good)':'var(--bad)'}" data-tip="${esc(r.label)}|${signed(r.v)} H+V (${r.sub||''})"/>`;
+    g += `<text class="lbl-strong" x="${(pos?mid+w+7:mid-w-7).toFixed(1)}" y="${y+15}" text-anchor="${pos?'start':'end'}">${signed(r.v)}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
+}
+
+// ---------- tooltips
+const tip = $('#tip');
+document.addEventListener('mousemove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (!t) { tip.hidden = true; return; }
+  const [a,b] = t.getAttribute('data-tip').split('|');
+  tip.innerHTML = `<b>${esc(a)}</b>${esc(b||'')}`; tip.hidden = false;
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8);
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+});
+
+// ---------- overview
+function renderOverview(){
+  const gainers = latest.map(m => ({ m, d: prevMap[m.name] ? m.hv - prevMap[m.name].hv : null })).filter(x => x.d != null).sort((a,b) => b.d - a.d);
+  const dTotal = AP ? A.total - AP.total : 0, dHV = AP ? A.hv - AP.hv : 0;
+  const cs = canyonSummary();
+  const tile = (label, big, delta, spark) => `<div class="panel tile c3"><div class="eyebrow">${label}</div><div class="big">${big}</div>${delta?`<div class="delta">${delta}</div>`:''}${spark||''}</div>`;
+  const top = latest.slice(0, 12).map(m => ({ label: m.name, total: m.hv, sub: m.rank + ' · HQ ' + m.hq, segs: [{v: m.hero, col: 'var(--s1)', name: 'Hero'}, {v: m.veh, col: 'var(--s2)', name: 'Vehicle'}] }));
+  const comp = [{label:'Structure', v:A.struct}, {label:'Troops', v:A.troop}, {label:'Hero', v:A.hero}, {label:'Tech', v:A.tech}, {label:'Vehicle', v:A.veh}].sort((a,b)=>b.v-a.v).map(r => ({ label: r.label, total: r.v, segs: [{v: r.v, col: 'var(--s1)', name: r.label}], sub: (r.v/A.total*100).toFixed(1)+'% of total' }));
+  $('#view-overview').innerHTML = `<div class="grid">
+    ${tile('Members', A.n, AP ? `${signed(A.n-AP.n)} since ${dShort(PREV)}` : '', '')}
+    ${tile('Alliance H+V', fmt(A.hv), AP ? `<span class="${dHV>=0?'up':'down'}">${signed(dHV)}</span> (${pct(A.hv, AP.hv)}) since ${dShort(PREV)}` : '', sparkline(alliance.map(a=>a.hv)))}
+    ${tile('Alliance total power', fmt(A.total), AP ? `<span class="${dTotal>=0?'up':'down'}">${signed(dTotal)}</span> (${pct(A.total, AP.total)})` : '', sparkline(alliance.map(a=>a.total), 120, 28, 'var(--s2)'))}
+    ${tile('Canyon starters gap', cs.gapPct == null ? '—' : cs.gapPct.toFixed(1)+'%', cs.gapPct == null ? 'No teams built yet' : `<span class="${cs.gapPct < 5 ? 'up' : 'down'}">${cs.strong} ahead by ${fmt(Math.abs(cs.gap))}</span>`, '')}
+    <div class="panel c12"><h3>Leadership <span class="note">R5 and R4s, strongest first · click for details</span></h3>
+      <div class="leaders">${leaders.map(m => `<button class="leader" data-member="${esc(m.name)}">${avatar(m)}<div><div class="nm">${esc(m.name)}</div><div class="rk"><span class="chip ${m.rank}">${m.rank}</span>${m.title?`<span class="chip title">${esc(m.title)}</span>`:''}</div><div class="pw">${fmt(m.hv)} H+V</div></div></button>`).join('')}</div></div>
+    <div class="panel c8"><h3>Top 12 by hero + vehicle <span class="note">the strength measure JTB plans on</span></h3>${hbars(top, {label:'Top 12 members by hero plus vehicle power'})}
+      <div class="legend"><span><i style="background:var(--s1)"></i>Hero</span><span><i style="background:var(--s2)"></i>Mod vehicle</span></div></div>
+    <div class="panel c4"><h3>Where alliance power sits</h3>${hbars(comp, {label:'Alliance power by component', labelW: 70, W: 320})}<div class="legend"><span>Total ${fmt(A.total)} · H+V is ${(A.hv/A.total*100).toFixed(0)}% of it</span></div></div>
+    <div class="panel c8"><h3>Alliance strength over snapshots</h3>${lineChart([{name:'Alliance H+V', vals: alliance.map(a=>a.hv), col:'var(--s1)'}], alliance.map(a=>dShort(a.date)), {label:'Alliance hero plus vehicle power by snapshot'})}</div>
+    <div class="panel c4"><h3>Movers since ${dShort(PREV)} <span class="note">H+V</span></h3>
+      <div class="mini" style="flex-direction:column;gap:4px">${gainers.slice(0,5).map(x => `<div style="display:flex;justify-content:space-between;gap:8px"><a href="#" data-member="${esc(x.m.name)}" style="color:var(--fg);text-decoration:none">${esc(x.m.name)}</a><span class="d-up">${signed(x.d)}</span></div>`).join('')}
+      <div style="border-top:1px solid var(--line);margin:4px 0"></div>${gainers.slice(-5).reverse().map(x => `<div style="display:flex;justify-content:space-between;gap:8px"><a href="#" data-member="${esc(x.m.name)}" style="color:var(--fg);text-decoration:none">${esc(x.m.name)}</a><span class="${x.d<0?'d-down':'d-flat'}">${signed(x.d)}</span></div>`).join('')}</div></div>
+  </div>`;
+}
+
+// ---------- roster
+let sortKey = 'hv', sortDir = -1, rankFilter = 'all';
+const cols = [
+  { k:'rankHV', l:'#', f: m => m.rankHV },
+  { k:'name', l:'Member', f: m => esc(m.name), cls:'l', str: true },
+  { k:'rank', l:'Rank', f: m => `<span class="chip ${m.rank}">${m.rank}</span>${m.title?' <span class="chip title">'+esc(m.title)+'</span>':''}`, cls:'l', str: true },
+  { k:'hq', l:'HQ', f: m => m.hq },
+  { k:'hv', l:'Hero + vehicle', f: m => { const w = Math.round(m.hv / latest[0].hv * 90); return `<span class="bar" style="width:${Math.round(m.hero/m.hv*w)}px"></span><span class="bar v" style="width:${w-Math.round(m.hero/m.hv*w)}px"></span> ${fmt(m.hv)}`; } },
+  { k:'hero', l:'Hero', f: m => fmt(m.hero) },
+  { k:'veh', l:'Vehicle', f: m => fmt(m.veh) },
+  { k:'dhv', l:'Δ H+V', f: m => { const p = prevMap[m.name]; if (!p) return '<span class="d-flat">new</span>'; const d = m.hv - p.hv; return `<span class="${d>0?'d-up':d<0?'d-down':'d-flat'}">${signed(d)}</span>`; }, v: m => prevMap[m.name] ? m.hv - prevMap[m.name].hv : -Infinity },
+  { k:'total', l:'Total', f: m => fmt(m.total) },
+  { k:'kills', l:'Kills', f: m => fmt(m.kills) },
+  { k:'canyon', l:'Canyon', f: m => esc((canyonMap[m.name]||{}).final || ''), cls:'l', str: true, v: m => (canyonMap[m.name]||{}).final || '' },
+];
+function renderRoster(){
+  const q = $('#q').value.trim().toLowerCase();
+  let rows = latest.filter(m => (rankFilter === 'all' || m.rank === rankFilter) && (!q || m.name.toLowerCase().includes(q)));
+  const c = cols.find(x => x.k === sortKey); const val = m => c.v ? c.v(m) : m[c.k];
+  rows.sort((a,b) => { const x = val(a), y = val(b); return (c.str ? String(x).localeCompare(String(y)) : (x - y)) * sortDir; });
+  $('#view-roster').innerHTML = `<div class="panel c12"><div class="filters">
+      <h3 style="margin:0">Roster <span class="note">${dLong(LATEST)}</span></h3>
+      <select id="rankf" aria-label="Filter by rank"><option value="all">All ranks</option><option value="R5">R5</option><option value="R4">R4</option><option value="R3">R3</option></select>
+      <button class="btn small" id="copy-roster">Copy as text</button>
+      <span class="count">${rows.length} of ${latest.length} members · click a row for history</span></div>
+    <div class="tablewrap"><table><thead><tr>${cols.map(x => `<th class="${x.cls||''} ${x.k===sortKey?'sorted':''}" data-sort="${x.k}">${x.l}${x.k===sortKey?(sortDir<0?' ▾':' ▴'):''}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(m => `<tr data-member="${esc(m.name)}">${cols.map(x => `<td class="${x.cls||''}">${x.f(m)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  $('#rankf').value = rankFilter;
+  $('#rankf').onchange = e => { rankFilter = e.target.value; renderRoster(); };
+  $('#copy-roster').onclick = () => copy(rows.map(m => `${m.rankHV}. ${m.name} (${m.rank}) HQ${m.hq} H+V ${fmtM(m.hv)}`).join('\n'), 'Roster copied');
+  $('#view-roster').querySelectorAll('th[data-sort]').forEach(th => th.onclick = () => { const k = th.dataset.sort; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = cols.find(x=>x.k===k).str ? 1 : -1; } renderRoster(); });
+}
+
+// ---------- canyon
+function canyonSummary(){
+  const teams = { T1: [], T2: [] }, hvOf = n => (latest.find(m => m.name === n)||{}).hv || 0;
+  D.canyon.forEach(c => { const f = c.final || ''; const t = f.startsWith('T1') ? 'T1' : f.startsWith('T2') ? 'T2' : null; if (t) teams[t].push({ ...c, hv: hvOf(c.name), starter: f.endsWith('Starter') }); });
+  Object.values(teams).forEach(a => a.sort((x,y) => y.hv - x.hv));
+  const st = t => sum(teams[t].filter(p => p.starter), p => p.hv);
+  const s1 = st('T1'), s2 = st('T2'), gap = s1 - s2, strong = gap >= 0 ? 'Team 1' : 'Team 2';
+  const gapPct = (s1 || s2) ? Math.abs(gap)/Math.max(s1,s2)*100 : null;
+  return { teams, s1, s2, gap, gapPct, strong };
+}
+function renderCanyon(){
+  const cs = canyonSummary(), M = D.meta;
+  const votes = { '18:00 only': 0, '23:00 only': 0, 'Both': 0, 'N/A': 0, 'No vote': 0 };
+  D.canyon.forEach(c => { const a = c.avail === '' ? 'No vote' : c.avail; votes[a in votes ? a : 'No vote']++; });
+  const vcol = { '18:00 only': 'var(--t1)', '23:00 only': 'var(--t2)', 'Both': 'var(--s3)', 'N/A': 'var(--fg-3)', 'No vote': 'var(--line-strong)' };
+  const total = D.canyon.length;
+  const noVote = D.canyon.filter(c => c.avail === '').map(c => ({ ...c, hv: (latest.find(m => m.name === c.name)||{}).hv || 0 })).sort((a,b) => b.hv - a.hv);
+  const overrides = D.canyon.filter(c => c.manual);
+  const teamCard = (key, label, session) => {
+    const T = cs.teams[key], starters = T.filter(p => p.starter), subs = T.filter(p => !p.starter), stot = key==='T1' ? cs.s1 : cs.s2;
+    const row = p => `<div class="slot" data-tip="${esc(p.name)}|${p.avail || 'no vote'} · ${fmt(p.hv)} H+V · click to edit"><span class="n ${p.avail==='Both'?'both':''} ${p.manual?'override':''} ${pending[p.name]?'pending':''}" data-member="${esc(p.name)}" style="cursor:pointer">${esc(p.name)}</span><span class="v">${fmtM(p.hv)}</span></div>`;
+    return `<div class="panel c6 team ${key.toLowerCase()}"><div class="head"><div><h3 style="color:var(--${key.toLowerCase()})">${label} <span class="note">${esc(session)}</span></h3><div class="eyebrow">Starters H+V</div></div><div class="tot">${fmt(stot)}</div></div>
+      <div class="mini" style="margin-top:6px"><span>${starters.length}/${M.starters} starters</span><span>${subs.length}/${M.subs} subs</span><span>avg starter ${fmtM(stot/Math.max(1,starters.length))}</span><button class="btn small" data-copy="${key}">Copy lineup</button></div>
+      <div class="eyebrow" style="margin-top:10px">Starters</div><div class="slotlist">${starters.map(row).join('') || '<span class="v">none yet</span>'}</div>
+      <div class="eyebrow" style="margin-top:10px">Substitutes</div><div class="slotlist">${subs.map(row).join('') || '<span class="v">none</span>'}</div></div>`;
+  };
+  const gmax = Math.max(cs.s1, cs.s2) || 1;
+  $('#view-canyon').innerHTML = `<div class="grid">
+    <div class="panel c12"><h3>Starters balance <span class="note">only the 20 starters per team count; subs never do</span></h3>
+      <div class="gap"><div><div class="mini" style="justify-content:space-between"><b style="color:var(--t1)">Team 1</b><span>${fmt(cs.s1)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s1/gmax*100).toFixed(1)}%;background:var(--t1)"></i></div></div>
+        <div style="text-align:center"><div class="big" style="font-family:var(--display);font-size:28px;font-weight:700;color:${cs.gapPct!=null&&cs.gapPct<5?'var(--good)':'var(--bad)'}">${cs.gapPct==null?'—':cs.gapPct.toFixed(1)+'%'}</div><div class="eyebrow">${cs.strong} ahead by ${fmt(Math.abs(cs.gap))}</div></div>
+        <div><div class="mini" style="justify-content:space-between"><b style="color:var(--t2)">Team 2</b><span>${fmt(cs.s2)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s2/gmax*100).toFixed(1)}%;background:var(--t2)"></i></div></div></div>
+      <div class="eyebrow" style="margin-top:14px">Availability · ${total} members</div>
+      <div class="avail">${Object.entries(votes).filter(([k,v])=>v).map(([k,v]) => `<i style="width:${(v/total*100).toFixed(2)}%;background:${vcol[k]}" data-tip="${k}|${v} members (${(v/total*100).toFixed(0)}%)"></i>`).join('')}</div>
+      <div class="legend">${Object.entries(votes).map(([k,v]) => `<span><i style="background:${vcol[k]}"></i>${k} · ${v}</span>`).join('')}${overrides.length?`<span style="margin-left:auto;color:var(--warn)">✎ ${overrides.length} manual override${overrides.length>1?'s':''}</span>`:''}</div></div>
+    ${teamCard('T1', 'Team 1', M.t1)}${teamCard('T2', 'Team 2', M.t2)}
+    <div class="panel c12"><h3>No vote yet · ${noVote.length} <span class="note">strongest first; each one voting 18:00 or Both would take a Team 1 starter spot</span></h3>
+      <div class="filters"><button class="btn small" id="copy-nudge">Copy names</button><button class="btn small" id="copy-nudge-msg">Copy poll reminder</button></div>
+      <div class="nudge">${noVote.map(c => `<div><span data-member="${esc(c.name)}" style="cursor:pointer" class="${pending[c.name]?'pending':''}">${esc(c.name)}</span><span class="v">${fmtM(c.hv)}</span></div>`).join('')}</div></div>
+  </div>`;
+  $('#view-canyon').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const k = b.dataset.copy, T = cs.teams[k]; copy(`${k==='T1'?'TEAM 1':'TEAM 2'} (${k==='T1'?M.t1:M.t2})\nStarters:\n${T.filter(p=>p.starter).map((p,i)=>`${i+1}. ${p.name}`).join('\n')}\nSubstitutes:\n${T.filter(p=>!p.starter).map((p,i)=>`${i+1}. ${p.name}`).join('\n')}`, 'Lineup copied'); });
+  $('#copy-nudge').onclick = () => copy(noVote.map(c => c.name).join(', '), 'Names copied');
+  $('#copy-nudge-msg').onclick = () => copy(`Canyon Clash poll: we still need a vote from ${noVote.length} members. Please pick 18:00, 23:00, Both or N/A so we can set the teams. Missing: ${noVote.map(c => c.name).join(', ')}`, 'Reminder copied');
+}
+
+// ---------- trends
+function renderTrends(){
+  const both = latest.filter(m => prevMap[m.name]).map(m => ({ label: m.name, v: m.hv - prevMap[m.name].hv, sub: pct(m.hv, prevMap[m.name].hv) }));
+  both.sort((a,b) => b.v - a.v);
+  const up = both.filter(x => x.v > 0).slice(0, 10), down = both.filter(x => x.v < 0).slice(-10).reverse();
+  const joined = latest.filter(m => !prevMap[m.name]), left = (byDate[PREV]||[]).filter(p => !latest.find(m => m.name === p.name));
+  const first = byDate[dates[0]]; const firstMap = {}; first.forEach(r => firstMap[r.name] = r);
+  const since = latest.filter(m => firstMap[m.name]).map(m => ({ label: m.name, v: m.hv - firstMap[m.name].hv, sub: pct(m.hv, firstMap[m.name].hv) })).sort((a,b) => b.v - a.v).slice(0, 10);
+  $('#view-trends').innerHTML = `<div class="grid">
+    <div class="panel c6"><h3>Biggest gains since ${dShort(PREV)} <span class="note">H+V</span></h3>${up.length ? divergeBars(up, {label:'Top gainers'}) : '<p class="v">No gains recorded.</p>'}</div>
+    <div class="panel c6"><h3>Declines since ${dShort(PREV)} <span class="note">H+V</span></h3>${down.length ? divergeBars(down, {label:'Top decliners'}) : '<p style="color:var(--fg-3)">Nobody lost hero or vehicle power. Good week.</p>'}</div>
+    <div class="panel c8"><h3>Hero vs vehicle, alliance-wide</h3>${lineChart([{name:'Hero', vals: alliance.map(a=>a.hero), col:'var(--s1)'},{name:'Mod vehicle', vals: alliance.map(a=>a.veh), col:'var(--s2)'}], alliance.map(a=>dShort(a.date)), {label:'Alliance hero and vehicle power by snapshot'})}
+      <div class="legend"><span><i style="background:var(--s1)"></i>Hero</span><span><i style="background:var(--s2)"></i>Mod vehicle</span></div></div>
+    <div class="panel c4"><h3>Since first snapshot <span class="note">${dShort(dates[0])} → ${dShort(LATEST)}</span></h3>${divergeBars(since, {label:'Top gainers since first snapshot'})}</div>
+    <div class="panel c6"><h3>Joined since ${dShort(PREV)} · ${joined.length}</h3><div class="mini">${joined.map(m => `<span data-member="${esc(m.name)}" style="cursor:pointer">${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
+    <div class="panel c6"><h3>Left since ${dShort(PREV)} · ${left.length}</h3><div class="mini">${left.map(m => `<span>${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
+  </div>`;
+}
+
+// ---------- rules
+function renderRules(){
+  let out = '', open = false;
+  D.rules.slice(2).forEach(r => {
+    if (r.length === 1) { if (open) out += '</table>'; out += `<h4>${esc(r[0])}</h4><table>`; open = true; }
+    else out += `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`;
+  });
+  if (open) out += '</table>';
+  $('#view-rules').innerHTML = `<div class="panel c12 rules"><h3>Canyon Clash rules digest <span class="note">${esc(D.rules[1][0])}</span></h3><div class="tablewrap">${out}</div></div>`;
+}
+
+// ---------- member drawer
+function openMember(name){
+  const m = latest.find(x => x.name === name); if (!m) return;
+  const h = hist[name] || [], p = prevMap[name], c = canyonMap[name] || {};
+  const rows = [['Hero + vehicle', fmt(m.hv), p ? m.hv - p.hv : null], ['Hero', fmt(m.hero), p ? m.hero - p.hero : null], ['Mod vehicle', fmt(m.veh), p ? m.veh - p.veh : null], ['Structure', fmt(m.struct), p ? m.struct - p.struct : null], ['Tech', fmt(m.tech), p ? m.tech - p.tech : null], ['Troops', fmt(m.troop), p ? m.troop - p.troop : null], ['Total', fmt(m.total), p ? m.total - p.total : null], ['Kills', fmt(m.kills), p ? m.kills - p.kills : null]];
+  $('#drawer-card').innerHTML = `<div class="hd">${avatar(m)}<div><h2>${esc(m.name)}</h2><div class="rk" style="display:flex;gap:6px;margin-top:4px"><span class="chip ${m.rank}">${m.rank}</span>${m.title?`<span class="chip title">${esc(m.title)}</span>`:''}<span class="chip title">HQ ${m.hq}</span><span class="chip title">#${m.rankHV} by H+V</span></div></div><button class="btn close" id="close">Close</button></div>
+    <div class="eyebrow">H+V across ${h.length} snapshot${h.length>1?'s':''}</div>
+    ${h.length > 1 ? lineChart([{name:'H+V', vals: h.map(x=>x.hv), col:'var(--s1)'}], h.map(x=>dShort(x.date)), {label: name + ' hero plus vehicle over time'}) : '<p style="color:var(--fg-3)">Only one snapshot so far.</p>'}
+    <dl class="kv">${rows.map(([k,v,d]) => `<dt>${k}</dt><dd>${v}${d==null?'':` <span class="${d>0?'d-up':d<0?'d-down':'d-flat'}" style="font-size:12px">${signed(d)}</span>`}</dd>`).join('')}
+      <dt>Canyon vote</dt><dd>${esc(c.avail || 'no vote')}</dd><dt>Canyon slot</dt><dd>${esc(c.final || '—')}</dd>${c.t10?`<dt>T10</dt><dd>${esc(c.t10)}</dd>`:''}<dt>UID</dt><dd class="mono" style="font-size:12px">${esc(m.uid)}</dd></dl>
+    ${(READONLY && !WEB) ? '' : `<div class="edit"><label>Availability<select id="ed-avail">${AVAIL_OPTIONS.map(o => `<option value="${o}" ${o===(c.avail||'')?'selected':''}>${o || 'No vote'}</option>`).join('')}</select></label>
+      <label>Canyon slot<select id="ed-slot">${SLOT_OPTIONS.map(o => `<option value="${o}" ${(c.manual ? o===c.final : o==='auto')?'selected':''}>${o==='auto' ? 'Auto ('+(c.manual ? autoSlotOf(c) : (c.final||'not placed'))+')' : o}</option>`).join('')}</select></label>
+      ${WEB ? `<label>Passcode<input id="ed-code" type="password" autocomplete="off" placeholder="member or officer code" value="${esc(code)}"></label><label>Your name<input id="ed-by" type="text" autocomplete="off" maxlength="40" placeholder="who is changing this" value="${esc(who)}"></label>` : ''}
+      <div class="hint" id="ed-hint">${editHint(name)}</div></div>`}
+    <div class="filters" style="margin-top:14px"><button class="btn small" id="copy-uid">Copy UID</button><button class="btn small" id="copy-line">Copy summary</button></div>`;
+  if (!READONLY || WEB) { $('#ed-avail').onchange = e => applyEdit(name, { avail: e.target.value }); $('#ed-slot').onchange = e => applyEdit(name, { slot: e.target.value }); }
+  if (WEB) { $('#ed-code').onchange = e => { code = e.target.value.trim(); ls.set('jtb-code', code); role = null; checkCode(); }; $('#ed-by').onchange = e => { who = e.target.value.trim(); ls.set('jtb-who', who); }; if (code && !role) checkCode(); }
+  $('#drawer').hidden = false;
+  $('#close').onclick = closeDrawer;
+  $('#copy-uid').onclick = () => copy(m.uid, 'UID copied');
+  $('#copy-line').onclick = () => copy(`${m.name} (${m.rank}, HQ ${m.hq}) H+V ${fmtM(m.hv)} · hero ${fmtM(m.hero)} · vehicle ${fmtM(m.veh)} · total ${fmtM(m.total)}`, 'Summary copied');
+}
+function closeDrawer(){ $('#drawer').hidden = true; }
+$('#drawer').addEventListener('click', e => { if (e.target === $('#drawer')) closeDrawer(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeDrawer(); $('#q').blur(); }
+  if (e.key === '/' && document.activeElement !== $('#q')) { e.preventDefault(); $('#q').focus(); $('#q').select(); }
+});
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-member]'); if (!t) return;
+  e.preventDefault(); openMember(t.dataset.member);
+});
+
+// ---------- editing: apply locally, preview the new split, queue the change for the sheet
+const pending = {};          // name -> {avail?, slot?} not yet confirmed by board_data.json
+let queue = [], flushT = null, mcp = null, syncState = { mode: 'snapshot', at: null, err: null };
+function autoSlotOf(c){ const keep = c.manual; c.manual = false; recompute(); const s = c.final || 'not placed'; c.manual = keep; recompute(); return s; }
+let code = ls.get('jtb-code') || '', who = ls.get('jtb-who') || '', role = null;
+async function checkCode(){
+  if (!WEB || !code) { role = null; return; }
+  try { const r = await fetch(API_URL + '/whoami', { headers: { 'X-Code': code } }); role = r.ok ? (await r.json()).role : null; if (!r.ok) toast('That passcode is not recognised'); }
+  catch (e) { role = null; }
+  const h = $('#ed-hint'); if (h) h.textContent = editHint('');
+  const sl = $('#ed-slot'); if (sl) sl.disabled = role !== 'officer';
+}
+function editHint(name){
+  if (WEB) { if (!code) return 'Enter the alliance passcode to set availability; officers use the officer code to change slots. Changes reach the sheet within a minute.'; if (role === 'officer') return 'Officer code accepted: you can change availability and slots.'; if (role === 'member') return 'Member code accepted: you can set availability. Slots need the officer code.'; return 'Checking passcode…'; }
+  if (!mcp) return 'Google Drive is not connected in this view, so changes stay here as a preview. Connect Google Drive on claude.ai and reopen to sync with the sheet.';
+  return pending[name] ? 'Change sent. The sheet picks it up within a minute and the board follows.' : 'Changes go to the Canyon Teams sheet within a minute. Teams re-split right away as a preview.';
+}
+function applyEdit(name, e){
+  const c = canyonMap[name]; if (!c) return;
+  if (e.avail !== undefined) c.avail = e.avail;
+  if (e.slot !== undefined) { if (e.slot === 'auto') { c.manual = false; c.override = ''; } else { c.manual = true; c.override = e.slot; } }
+  recompute();
+  pending[name] = Object.assign(pending[name] || {}, e);
+  queue.push({ name, ...e });
+  clearTimeout(flushT); flushT = setTimeout(flush, 1200);
+  renderAll(); if (!$('#drawer').hidden) { const h = $('#ed-hint'); if (h) h.textContent = editHint(name); const sl = $('#ed-slot'); if (sl) sl.options[0].textContent = 'Auto (' + (c.manual ? autoSlotOf(c) : (c.final||'not placed')) + ')'; }
+  updateSync();
+}
+async function flush(){
+  if (!queue.length) return;
+  const edits = queue; queue = [];
+  if (WEB) {
+    if (!code) { edits.forEach(x => { delete pending[x.name]; }); toast('Enter a passcode first'); updateSync(); return; }
+    for (const x of edits) {
+      try {
+        const r = await fetch(API_URL + '/edit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Code': code }, body: JSON.stringify({ name: x.name, avail: x.avail, slot: x.slot, by: who || undefined }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { delete pending[x.name]; toast(j.error === 'bad code' ? 'That passcode is not recognised' : j.error === 'slots need the officer code' ? 'Slots need the officer code' : 'Not saved: ' + (j.error || r.status)); syncState.err = null; }
+        else { syncState.err = null; toast('Sent to the sheet'); }
+      } catch (err) { delete pending[x.name]; syncState.err = 'offline'; toast('Could not reach the board API'); }
+    }
+    if (Object.keys(pending).length === 0) { await refreshWeb(); } updateSync(); return;
+  }
+  if (!mcp) { updateSync(); return; }
+  const body = JSON.stringify({ edits, by: 'command board', at: new Date().toISOString() });
+  try {
+    await mcp.callTool(DRIVE, 'create_file', { title: 'edit_' + Date.now() + '.json', parentId: INBOX_ID, contentMimeType: 'application/json', disableConversionToGoogleType: true, textContent: body });
+    syncState.err = null; toast('Sent to the sheet');
+  } catch (err) {
+    syncState.err = err && err.code ? err.code : 'error';
+    edits.forEach(x => { delete pending[x.name]; });
+    toast(syncState.err === 'needs_reauth' ? 'Google Drive needs to be reconnected' : syncState.err === 'server_not_connected' ? 'Google Drive is not connected' : 'Could not send to the sheet (' + syncState.err + ')');
+  }
+  updateSync();
+}
+function updateSync(){
+  const el = $('#sync'), n = Object.keys(pending).length;
+  const t = syncState.at ? new Date(syncState.at).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) : '';
+  if (syncState.err && !n) { el.className = 'sync err'; el.lastElementChild.textContent = syncState.err === 'needs_reauth' ? 'Drive: reconnect' : syncState.err === 'server_not_connected' ? 'Drive not connected' : syncState.err === 'offline' ? 'Board API unreachable' : 'Sync error'; }
+  else if (n) { el.className = 'sync pending'; el.lastElementChild.textContent = n + ' change' + (n>1?'s':'') + ' syncing'; }
+  else if (syncState.mode === 'live') { el.className = 'sync live'; el.lastElementChild.textContent = 'Live · ' + t; }
+  else if (syncState.mode === 'preview') { el.className = 'sync pending'; el.lastElementChild.textContent = 'Preview only'; }
+  else { el.className = 'sync'; el.lastElementChild.textContent = 'Snapshot ' + dShort(LATEST); }
+}
+function decodePayload(p){
+  if (p == null) return null;
+  if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { return null; } }
+  const b64 = p.content; if (!b64) return null;
+  const bin = atob(String(b64).replace(/\s/g, '')); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  try { return JSON.parse(new TextDecoder('utf-8').decode(bytes)); } catch (e) { return null; }
+}
+function adopt(fresh, storedAt){
+  if (!fresh || !fresh.history || !fresh.canyon) return;
+  // drop pending edits the sheet now reflects; re-apply the rest on top of the fresh data
+  fresh.canyon.forEach(c => { const p = pending[c.name]; if (!p) return;
+    const okA = p.avail === undefined || c.avail === p.avail, okS = p.slot === undefined || (p.slot === 'auto' ? !c.manual : (c.manual && c.final === p.slot));
+    if (okA && okS) delete pending[c.name]; });
+  D = fresh; prep();
+  const left = Object.keys(pending);
+  if (left.length) { left.forEach(n => { const c = canyonMap[n], p = pending[n]; if (!c) { delete pending[n]; return; } if (p.avail !== undefined) c.avail = p.avail; if (p.slot !== undefined) { if (p.slot === 'auto') { c.manual = false; c.override = ''; } else { c.manual = true; c.override = p.slot; } } }); recompute(); }
+  syncState.mode = 'live'; syncState.at = storedAt || Date.now();
+  $('#crest .sub').textContent = (READONLY ? 'Alliance board' : 'Command board') + ' · snapshot ' + dShort(LATEST);
+  $('#foot').textContent = footText();
+  renderAll(); updateSync();
+}
+async function refreshWeb(){
+  try { const r = await fetch(API_URL + '/data', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); const j = await r.json(); adopt(j, Date.parse(j.generated) || Date.now()); syncState.err = null; }
+  catch (e) { syncState.err = syncState.mode === 'live' ? null : 'offline'; updateSync(); }
+}
+async function connect(){
+  if (WEB) { await refreshWeb(); setInterval(() => { if (!document.hidden) refreshWeb(); }, 45000); document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshWeb(); }); return; }
+  if (READONLY) { syncState.mode = 'snapshot'; updateSync(); return; }
+  try { mcp = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (e) { mcp = null; }
+  if (!mcp) { updateSync(); return; }
+  mcp.watchTool(DRIVE, 'download_file_content', { fileId: BOARD_DATA_ID }, ev => {
+    if (ev.type === 'data') { const j = decodePayload(ev.result && (ev.result.payload !== undefined ? ev.result.payload : ev.result)); if (j) adopt(j, ev.result.cache && ev.result.cache.storedAt); }
+    else if (ev.type === 'error') { const code = ev.error && ev.error.code; if (['needs_reauth','server_not_connected','blocked_by_policy','approval_required'].includes(code)) { syncState.err = code; } updateSync(); }
+  }, { refetchInterval: 45000 });
+}
+connect();
+window.__jtb = { get D(){ return D; }, recompute, applyEdit, canyonSummary };
+
+// ---------- utilities
+function copy(text, msg){
+  const done = () => toast(msg);
+  const fallback = () => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch(e) { toast('Select and copy manually'); } ta.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+}
+let toastT; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+
+// ---------- tabs, search, toggles
+const views = { overview: renderOverview, roster: renderRoster, canyon: renderCanyon, trends: renderTrends, rules: renderRules };
+let current = null;
+function show(v){
+  if (!views[v]) v = 'overview';
+  current = v; ls.set('jtb-tab', v);
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'view-' + v);
+  views[v]();
+}
+function renderAll(){ views[current](); }
+$('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) show(t.dataset.view); });
+$('#q').addEventListener('input', () => { if (current !== 'roster') show('roster'); else renderRoster(); });
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter') { const q = $('#q').value.trim().toLowerCase(); const m = latest.find(x => x.name.toLowerCase() === q) || latest.find(x => x.name.toLowerCase().includes(q)); if (m) openMember(m.name); } });
+$('#unit').textContent = compact ? 'M' : '#';
+$('#unit').onclick = () => { compact = !compact; ls.set('jtb-unit', compact ? 'compact' : 'full'); $('#unit').textContent = compact ? 'M' : '#'; renderAll(); };
+$('#theme').onclick = () => { const r = document.documentElement, cur = r.getAttribute('data-theme'); const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.setAttribute('data-theme', dark ? 'light' : 'dark'); };
+const footText = () => `Data: JTB 293 Power Tracker, snapshot ${dLong(LATEST)} (${A.n} members, ${dates.length} snapshots since ${dShort(dates[0])}). Strength is hero + mod vehicle power because total power swings with troop rebuilds. ${WEB ? 'Open any member to set availability (alliance passcode) or a slot (officer passcode); changes reach the Canyon Teams sheet within a minute.' : READONLY ? 'This is the shared read-only copy; officers edit availability and slots on the command board.' : 'Availability and slot edits made here go to the Canyon Teams sheet through your Google Drive connection.'} Avatars are rank shields standing in for in-game portraits.`;
+$('#foot').textContent = footText(); updateSync();
+let wasNarrow = narrow(); addEventListener('resize', () => { if (narrow() !== wasNarrow) { wasNarrow = narrow(); renderAll(); } });
+const hash = location.hash.replace('#','');
+show(views[hash] ? hash : (ls.get('jtb-tab') || 'overview'));
+})();
+</script>
