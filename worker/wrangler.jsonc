@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jtb293-board",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-01",
+  "kv_namespaces": [{ "binding": "BOARD", "id": "3341d4351e0842cc9f770087980404f0" }],
+  "observability": { "enabled": true }
+}
