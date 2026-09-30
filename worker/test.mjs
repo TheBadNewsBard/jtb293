@@ -22,4 +22,10 @@ ok((await call('/edits/ack', { method: 'POST', headers: { 'X-Sync-Key': 'sync-se
 ok((await call('/edits', { headers: { 'X-Sync-Key': 'sync-secret' } }))[1].edits.length === 0, 'queue empty');
 const [, log] = await call('/log'); ok(log.log.length === 2 && log.log[1].error === 'bad slot' && !('role' in log.log[0] && log.log[0].id), 'log ' + JSON.stringify(log));
 ok((await call('/x', { method: 'OPTIONS' })).length === 2, 'options');
+// queue cap: a leaked code cannot fill KV
+for (let i = 0; i < 301; i++) kv.set('edit:bulk' + i, JSON.stringify({ id: 'bulk' + i, name: 'BB', at: '9' }));
+const capped = await call('/edit', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ name: 'BB', avail: 'Both' }) });
+ok(capped[0] === 429 && /too many pending/.test(capped[1].error), 'queue cap ' + JSON.stringify(capped));
+for (let i = 0; i < 301; i++) kv.delete('edit:bulk' + i);
+ok((await call('/edit', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ name: 'BB', avail: 'Both' }) }))[1].ok, 'accepts again once drained');
 console.log(fails ? fails + ' FAILURES' : 'WORKER TESTS PASSED');

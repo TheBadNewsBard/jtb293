@@ -530,7 +530,13 @@ function openMember(name){
       <div class="hint" id="ed-hint">${editHint(name)}</div></div>`}
     <div class="filters" style="margin-top:14px"><button class="btn small" id="copy-uid">Copy UID</button><button class="btn small" id="copy-line">Copy summary</button></div>`;
   if (!READONLY || WEB) { $('#ed-avail').onchange = e => applyEdit(name, { avail: e.target.value }); $('#ed-slot').onchange = e => applyEdit(name, { slot: e.target.value }); }
-  if (WEB) { $('#ed-code').onchange = e => { code = e.target.value.trim(); ls.set('jtb-code', code); role = null; checkCode(); }; $('#ed-by').onchange = e => { who = e.target.value.trim(); ls.set('jtb-who', who); }; if (code && !role) checkCode(); }
+  if (WEB) {
+    const gate = () => { const a = $('#ed-avail'), sl = $('#ed-slot'); if (a) a.disabled = !role; if (sl) sl.disabled = role !== 'officer'; };
+    gate();
+    $('#ed-code').onchange = e => { code = e.target.value.trim(); ls.set('jtb-code', code); role = null; checkCode().then(gate); };
+    $('#ed-by').onchange = e => { who = e.target.value.trim(); ls.set('jtb-who', who); };
+    if (code && !role) checkCode().then(gate);
+  }
   $('#drawer').hidden = false;
   $('#close').onclick = closeDrawer;
   $('#copy-uid').onclick = () => copy(m.uid, 'UID copied');
@@ -551,16 +557,16 @@ document.addEventListener('click', e => {
 const pending = {};          // name -> {avail?, slot?} not yet confirmed by board_data.json
 let queue = [], flushT = null, mcp = null, syncState = { mode: 'snapshot', at: null, err: null };
 function autoSlotOf(c){ const keep = c.manual; c.manual = false; recompute(); const s = c.final || 'not placed'; c.manual = keep; recompute(); return s; }
-let code = ls.get('jtb-code') || '', who = ls.get('jtb-who') || '', role = null;
+let code = ls.get('jtb-code') || '', who = ls.get('jtb-who') || '', role = null, codeState = 'none';
 async function checkCode(){
-  if (!WEB || !code) { role = null; return; }
-  try { const r = await fetch(API_URL + '/whoami', { headers: { 'X-Code': code } }); role = r.ok ? (await r.json()).role : null; if (!r.ok) toast('That passcode is not recognised'); }
-  catch (e) { role = null; }
+  if (!WEB || !code) { role = null; codeState = 'none'; return; }
+  codeState = 'checking';
+  try { const r = await fetch(API_URL + '/whoami', { headers: { 'X-Code': code } }); role = r.ok ? (await r.json()).role : null; codeState = r.ok ? 'ok' : 'bad'; if (!r.ok) toast('That passcode is not recognised'); }
+  catch (e) { role = null; codeState = 'offline'; }
   const h = $('#ed-hint'); if (h) h.textContent = editHint('');
-  const sl = $('#ed-slot'); if (sl) sl.disabled = role !== 'officer';
 }
 function editHint(name){
-  if (WEB) { if (!code) return 'Enter the alliance passcode to set availability; officers use the officer code to change slots. Changes reach the sheet within a minute.'; if (role === 'officer') return 'Officer code accepted: you can change availability and slots.'; if (role === 'member') return 'Member code accepted: you can set availability. Slots need the officer code.'; return 'Checking passcode…'; }
+  if (WEB) { if (!code) return 'Enter the alliance passcode to set availability; officers use the officer code to change slots. Changes reach the sheet within a minute.'; if (role === 'officer') return 'Officer code accepted: you can change availability and slots.'; if (role === 'member') return 'Member code accepted: you can set availability. Slots need the officer code.'; if (codeState === 'bad') return 'That passcode is not recognised. Ask an officer for the current alliance code.'; if (codeState === 'offline') return 'Could not reach the board API to check that passcode. Try again in a moment.'; return 'Checking passcode…'; }
   if (!mcp) return 'Google Drive is not connected in this view, so changes stay here as a preview. Connect Google Drive on claude.ai and reopen to sync with the sheet.';
   return pending[name] ? 'Change sent. The sheet picks it up within a minute and the board follows.' : 'Changes go to the Canyon Teams sheet within a minute. Teams re-split right away as a preview.';
 }

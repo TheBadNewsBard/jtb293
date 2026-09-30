@@ -17,6 +17,7 @@
  *   GET  /whoami               X-Code       {role: "officer" | "member"}  (lets the page check a code)
  */
 const AVAIL = ['', '18:00 only', '23:00 only', 'Both', 'N/A'];
+const MAX_PENDING = 300;   // queue cap (see /edit); the sheet drains the queue every minute
 const SLOTS = ['auto', 'T1 Starter', 'T1 Sub', 'T2 Starter', 'T2 Sub', 'Bench', 'Not available'];
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,X-Code,X-Sync-Key', 'Access-Control-Max-Age': '86400' };
 const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...CORS, ...extra } });
@@ -56,6 +57,10 @@ export default {
         // the sheet is the source of truth; the worker only queues. Keep names in the data file honest: reject unknown members.
         const data = await env.BOARD.get('data', 'json');
         if (data && !data.canyon.some(c => c.name === name)) return json({ error: 'unknown member' }, 404);
+        // A shared passcode can leak. Cap the queue so a script cannot burn the KV write quota before anyone notices;
+        // the sheet drains it every minute, so a real backlog never approaches this.
+        const pending = await env.BOARD.list({ prefix: 'edit:', limit: MAX_PENDING + 1 });
+        if (pending.keys.length > MAX_PENDING) return json({ error: 'too many pending changes, try again in a minute' }, 429, { 'Retry-After': '60' });
         await env.BOARD.put('edit:' + out.id, JSON.stringify(out), { expirationTtl: 60 * 60 * 24 * 7 });
         return json({ ok: true, edit: out });
       }
