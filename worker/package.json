@@ -1,1 +1,6 @@
-{ "name": "jtb293-board-worker", "private": true, "scripts": { "deploy": "wrangler deploy", "test": "node test.mjs" } }
+{
+  "name": "jtb293-board-worker",
+  "private": true,
+  "scripts": { "deploy": "wrangler deploy", "test": "node test.mjs" },
+  "devDependencies": { "wrangler": "^4.30.0" }
+}
