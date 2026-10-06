@@ -84,6 +84,8 @@ h3 { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacin
   .nudge { columns: 2 130px; }
   .drawer .card { width: 100%; border-left: 0; }
   th, td { padding: 6px 6px; font-size: 12.5px; }
+  .hide-sm { display: none; }                 /* keep #, member, rank, the measure and the Canyon slot on a phone */
+  td .bar, td .chip.title { display: none; }  /* the number matters more than the bar when the screen is this narrow */
 }
 .search { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; min-width: 200px; min-height: 32px; }
 .search input { background: none; border: 0; outline: none; width: 100%; color: var(--fg); }
@@ -247,21 +249,31 @@ const $ = (s, el=document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ls = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
 
+// ---------- the strength measure: whatever Canyon Teams C9 ("Starters chosen by") is set to.
+// Arena power since 2026-10-05. Ranking, sorting and the whole Canyon balance read it, exactly as the sheet's
+// column R does. Growth charts and movers stay on hero+vehicle, which is the only measure with history so far.
+const BY_ARENA = String((D.meta || {}).by || '') === 'Arena power';
+const MLBL  = BY_ARENA ? 'Arena' : 'H+V';
+const MLONG = BY_ARENA ? 'arena power' : 'hero + vehicle';
+const pw = m => ((BY_ARENA ? (m && m.arena) : (m && m.hv)) || 0);
+
 // ---------- data prep (re-run whenever D changes)
 const sum = (arr, f) => arr.reduce((s,x) => s + (f(x)||0), 0);
-let dates, LATEST, PREV, byDate, latest, prevMap, hist, canyonMap, alliance, A, AP, leaders;
+let dates, LATEST, PREV, byDate, latest, prevMap, hist, canyonMap, alliance, A, AP, leaders, ARENA_OK, ARENA_PREV, maxArena;
 function prep(){
   dates = D.dates.slice().sort(); LATEST = dates[dates.length-1]; PREV = dates[dates.length-2];
   byDate = {}; D.history.forEach(r => { (byDate[r.date] ??= []).push(r); });
-  latest = byDate[LATEST].slice().sort((a,b) => b.hv - a.hv);
+  latest = byDate[LATEST].slice().sort((a,b) => pw(b) - pw(a) || b.hv - a.hv);
   latest.forEach((m,i) => m.rankHV = i+1);
   prevMap = {}; (byDate[PREV]||[]).forEach(r => prevMap[r.name] = r);
   hist = {}; D.history.forEach(r => { (hist[r.name] ??= []).push(r); });
   Object.values(hist).forEach(a => a.sort((x,y) => x.date < y.date ? -1 : 1));
   canyonMap = {}; D.canyon.forEach(c => canyonMap[c.name] = c);
-  alliance = dates.map(d => ({ date: d, n: byDate[d].length, total: sum(byDate[d], x=>x.total), hv: sum(byDate[d], x=>x.hv), hero: sum(byDate[d], x=>x.hero), veh: sum(byDate[d], x=>x.veh), struct: sum(byDate[d], x=>x.struct), tech: sum(byDate[d], x=>x.tech), troop: sum(byDate[d], x=>x.troop), kills: sum(byDate[d], x=>x.kills) }));
+  alliance = dates.map(d => ({ date: d, n: byDate[d].length, total: sum(byDate[d], x=>x.total), hv: sum(byDate[d], x=>x.hv), hero: sum(byDate[d], x=>x.hero), veh: sum(byDate[d], x=>x.veh), struct: sum(byDate[d], x=>x.struct), tech: sum(byDate[d], x=>x.tech), troop: sum(byDate[d], x=>x.troop), kills: sum(byDate[d], x=>x.kills), arena: sum(byDate[d], x=>x.arena) }));
   A = alliance[alliance.length-1]; AP = alliance[alliance.length-2];
-  leaders = latest.filter(m => m.rank === 'R5' || m.rank === 'R4').sort((a,b) => (a.rank===b.rank ? b.hv-a.hv : (a.rank==='R5'?-1:1)));
+  ARENA_OK = byDate[LATEST].some(x => x.arena); ARENA_PREV = (byDate[PREV] || []).some(x => x.arena);
+  maxArena = Math.max(1, ...byDate[LATEST].map(x => x.arena || 0));
+  leaders = latest.filter(m => m.rank === 'R5' || m.rank === 'R4').sort((a,b) => (a.rank===b.rank ? pw(b)-pw(a) : (a.rank==='R5'?-1:1)));
 }
 prep();
 
@@ -269,7 +281,7 @@ prep();
 function sessKey(s){ s = String(s||''); if (/^Either/.test(s)) return 'Either'; if (/^Both/.test(s)) return 'Both'; if (/^N\/A/.test(s)) return 'N/A'; return s.slice(0,5); }
 function recompute(){
   const M = D.meta, CS = M.starters, CAP = CS + M.subs, u4 = sessKey(M.t1), u6 = sessKey(M.t2), t2on = M.t2active !== 'N';
-  const hvOf = n => (latest.find(m => m.name === n)||{}).hv || 0;
+  const hvOf = n => pw(latest.find(m => m.name === n));   // _hv below is the chosen measure, not always hero+vehicle
   D.canyon.forEach(c => {
     const u = sessKey(c.avail);
     const ok1 = u4 === 'Either' ? (u !== '' && u !== 'N/A') : (u === 'Both' || u === u4);
@@ -387,19 +399,23 @@ function renderOverview(){
   const dTotal = AP ? A.total - AP.total : 0, dHV = AP ? A.hv - AP.hv : 0;
   const cs = canyonSummary();
   const tile = (label, big, delta, spark) => `<div class="panel tile c3"><div class="eyebrow">${label}</div><div class="big">${big}</div>${delta?`<div class="delta">${delta}</div>`:''}${spark||''}</div>`;
-  const top = latest.slice(0, 12).map(m => ({ label: m.name, total: m.hv, sub: m.rank + ' · HQ ' + m.hq, segs: [{v: m.hero, col: 'var(--s1)', name: 'Hero'}, {v: m.veh, col: 'var(--s2)', name: 'Vehicle'}] }));
+  const top = latest.slice(0, 12).map(m => ({ label: m.name, total: pw(m), sub: m.rank + ' · HQ ' + m.hq,
+    segs: BY_ARENA ? [{v: m.arena || 0, col: 'var(--s1)', name: 'Arena'}]
+                   : [{v: m.hero, col: 'var(--s1)', name: 'Hero'}, {v: m.veh, col: 'var(--s2)', name: 'Vehicle'}] }));
   const comp = [{label:'Structure', v:A.struct}, {label:'Troops', v:A.troop}, {label:'Hero', v:A.hero}, {label:'Tech', v:A.tech}, {label:'Vehicle', v:A.veh}].sort((a,b)=>b.v-a.v).map(r => ({ label: r.label, total: r.v, segs: [{v: r.v, col: 'var(--s1)', name: r.label}], sub: (r.v/A.total*100).toFixed(1)+'% of total' }));
   $('#view-overview').innerHTML = `<div class="grid">
     ${tile('Members', A.n, AP ? `${signed(A.n-AP.n)} since ${dShort(PREV)}` : '', '')}
+    ${BY_ARENA && ARENA_OK
+      ? tile('Alliance arena power', fmt(A.arena), ARENA_PREV ? `<span class="${A.arena>=AP.arena?'up':'down'}">${signed(A.arena-AP.arena)}</span> (${pct(A.arena, AP.arena)}) since ${dShort(PREV)}` : 'first arena snapshot', ARENA_PREV ? sparkline(alliance.filter(a=>a.arena).map(a=>a.arena)) : '')
+      : tile('Alliance total power', fmt(A.total), AP ? `<span class="${dTotal>=0?'up':'down'}">${signed(dTotal)}</span> (${pct(A.total, AP.total)})` : '', sparkline(alliance.map(a=>a.total), 120, 28, 'var(--s2)'))}
     ${tile('Alliance H+V', fmt(A.hv), AP ? `<span class="${dHV>=0?'up':'down'}">${signed(dHV)}</span> (${pct(A.hv, AP.hv)}) since ${dShort(PREV)}` : '', sparkline(alliance.map(a=>a.hv)))}
-    ${tile('Alliance total power', fmt(A.total), AP ? `<span class="${dTotal>=0?'up':'down'}">${signed(dTotal)}</span> (${pct(A.total, AP.total)})` : '', sparkline(alliance.map(a=>a.total), 120, 28, 'var(--s2)'))}
     ${tile('Canyon starters gap', cs.gapPct == null ? '—' : cs.gapPct.toFixed(1)+'%', cs.gapPct == null ? 'No teams built yet' : `<span class="${cs.gapPct < 5 ? 'up' : 'down'}">${cs.strong} ahead by ${fmt(Math.abs(cs.gap))}</span>`, '')}
     <div class="panel c12"><h3>Leadership <span class="note">R5 and R4s, strongest first · click for details</span></h3>
-      <div class="leaders">${leaders.map(m => `<button class="leader" data-member="${esc(m.name)}">${avatar(m)}<div><div class="nm">${esc(m.name)}</div><div class="rk"><span class="chip ${m.rank}">${m.rank}</span>${m.title?`<span class="chip title">${esc(m.title)}</span>`:''}</div><div class="pw">${fmt(m.hv)} H+V</div></div></button>`).join('')}</div></div>
-    <div class="panel c8"><h3>Top 12 by hero + vehicle <span class="note">the strength measure JTB plans on</span></h3>${hbars(top, {label:'Top 12 members by hero plus vehicle power'})}
-      <div class="legend"><span><i style="background:var(--s1)"></i>Hero</span><span><i style="background:var(--s2)"></i>Mod vehicle</span></div></div>
+      <div class="leaders">${leaders.map(m => `<button class="leader" data-member="${esc(m.name)}">${avatar(m)}<div><div class="nm">${esc(m.name)}</div><div class="rk"><span class="chip ${m.rank}">${m.rank}</span>${m.title?`<span class="chip title">${esc(m.title)}</span>`:''}</div><div class="pw">${fmt(pw(m))} ${MLBL}</div></div></button>`).join('')}</div></div>
+    <div class="panel c8"><h3>Top 12 by ${MLONG} <span class="note">the strength measure JTB plans on</span></h3>${hbars(top, {label:'Top 12 members by ' + MLONG})}
+      <div class="legend">${BY_ARENA ? '<span><i style="background:var(--s1)"></i>Arena power</span>' : '<span><i style="background:var(--s1)"></i>Hero</span><span><i style="background:var(--s2)"></i>Mod vehicle</span>'}</div></div>
     <div class="panel c4"><h3>Where alliance power sits</h3>${hbars(comp, {label:'Alliance power by component', labelW: 70, W: 320})}<div class="legend"><span>Total ${fmt(A.total)} · H+V is ${(A.hv/A.total*100).toFixed(0)}% of it</span></div></div>
-    <div class="panel c8"><h3>Alliance strength over snapshots</h3>${lineChart([{name:'Alliance H+V', vals: alliance.map(a=>a.hv), col:'var(--s1)'}], alliance.map(a=>dShort(a.date)), {label:'Alliance hero plus vehicle power by snapshot'})}</div>
+    <div class="panel c8"><h3>Alliance strength over snapshots <span class="note">hero + vehicle · the only measure with history before Oct 5</span></h3>${lineChart([{name:'Alliance H+V', vals: alliance.map(a=>a.hv), col:'var(--s1)'}], alliance.map(a=>dShort(a.date)), {label:'Alliance hero plus vehicle power by snapshot'})}</div>
     <div class="panel c4"><h3>Movers since ${dShort(PREV)} <span class="note">H+V</span></h3>
       <div class="mini" style="flex-direction:column;gap:4px">${gainers.slice(0,5).map(x => `<div style="display:flex;justify-content:space-between;gap:8px"><a href="#" data-member="${esc(x.m.name)}" style="color:var(--fg);text-decoration:none">${esc(x.m.name)}</a><span class="d-up">${signed(x.d)}</span></div>`).join('')}
       <div style="border-top:1px solid var(--line);margin:4px 0"></div>${gainers.slice(-5).reverse().map(x => `<div style="display:flex;justify-content:space-between;gap:8px"><a href="#" data-member="${esc(x.m.name)}" style="color:var(--fg);text-decoration:none">${esc(x.m.name)}</a><span class="${x.d<0?'d-down':'d-flat'}">${signed(x.d)}</span></div>`).join('')}</div></div>
@@ -407,21 +423,29 @@ function renderOverview(){
 }
 
 // ---------- roster
-let sortKey = 'hv', sortDir = -1, rankFilter = 'all';
-const cols = [
+let sortKey = (BY_ARENA && ARENA_OK ? 'arena' : 'hv'), sortDir = -1, rankFilter = 'all';
+const arenaCols = () => !ARENA_OK ? [] : [
+  { k:'arena', l:'Arena power', f: m => `<span class="bar" style="width:${Math.round((m.arena||0)/maxArena*90)}px"></span> ${fmt(m.arena)}`, v: m => m.arena || 0 },
+  ...(ARENA_PREV ? [{ k:'darena', l:'Δ Arena', f: m => { const q = prevMap[m.name]; if (!q || !q.arena) return '<span class="d-flat">new</span>'; const d = (m.arena||0) - q.arena; return `<span class="${d>0?'d-up':d<0?'d-down':'d-flat'}">${signed(d)}</span>`; }, v: m => { const q = prevMap[m.name]; return q && q.arena ? (m.arena||0) - q.arena : -Infinity; }, hide: true }] : []),
+];
+let cols = [];                      // rebuilt on every render so a data refresh can add the arena columns
+const buildCols = () => [
   { k:'rankHV', l:'#', f: m => m.rankHV },
   { k:'name', l:'Member', f: m => esc(m.name), cls:'l', str: true },
   { k:'rank', l:'Rank', f: m => `<span class="chip ${m.rank}">${m.rank}</span>${m.title?' <span class="chip title">'+esc(m.title)+'</span>':''}`, cls:'l', str: true },
-  { k:'hq', l:'HQ', f: m => m.hq },
+  { k:'hq', l:'HQ', f: m => m.hq, hide: true },
+  ...arenaCols(),
   { k:'hv', l:'Hero + vehicle', f: m => { const w = Math.round(m.hv / latest[0].hv * 90); return `<span class="bar" style="width:${Math.round(m.hero/m.hv*w)}px"></span><span class="bar v" style="width:${w-Math.round(m.hero/m.hv*w)}px"></span> ${fmt(m.hv)}`; } },
-  { k:'hero', l:'Hero', f: m => fmt(m.hero) },
-  { k:'veh', l:'Vehicle', f: m => fmt(m.veh) },
-  { k:'dhv', l:'Δ H+V', f: m => { const p = prevMap[m.name]; if (!p) return '<span class="d-flat">new</span>'; const d = m.hv - p.hv; return `<span class="${d>0?'d-up':d<0?'d-down':'d-flat'}">${signed(d)}</span>`; }, v: m => prevMap[m.name] ? m.hv - prevMap[m.name].hv : -Infinity },
-  { k:'total', l:'Total', f: m => fmt(m.total) },
-  { k:'kills', l:'Kills', f: m => fmt(m.kills) },
+  { k:'hero', l:'Hero', f: m => fmt(m.hero), hide: true },
+  { k:'veh', l:'Vehicle', f: m => fmt(m.veh), hide: true },
+  { k:'dhv', l:'Δ H+V', f: m => { const p = prevMap[m.name]; if (!p) return '<span class="d-flat">new</span>'; const d = m.hv - p.hv; return `<span class="${d>0?'d-up':d<0?'d-down':'d-flat'}">${signed(d)}</span>`; }, v: m => prevMap[m.name] ? m.hv - prevMap[m.name].hv : -Infinity, hide: true },
+  { k:'total', l:'Total', f: m => fmt(m.total), hide: true },
+  { k:'kills', l:'Kills', f: m => fmt(m.kills), hide: true },
   { k:'canyon', l:'Canyon', f: m => esc((canyonMap[m.name]||{}).final || ''), cls:'l', str: true, v: m => (canyonMap[m.name]||{}).final || '' },
 ];
 function renderRoster(){
+  cols = buildCols();
+  if (!cols.some(x => x.k === sortKey)) sortKey = 'hv';
   const q = $('#q').value.trim().toLowerCase();
   let rows = latest.filter(m => (rankFilter === 'all' || m.rank === rankFilter) && (!q || m.name.toLowerCase().includes(q)));
   const c = cols.find(x => x.k === sortKey); const val = m => c.v ? c.v(m) : m[c.k];
@@ -431,17 +455,17 @@ function renderRoster(){
       <select id="rankf" aria-label="Filter by rank"><option value="all">All ranks</option><option value="R5">R5</option><option value="R4">R4</option><option value="R3">R3</option></select>
       <button class="btn small" id="copy-roster">Copy as text</button>
       <span class="count">${rows.length} of ${latest.length} members · click a row for history</span></div>
-    <div class="tablewrap"><table><thead><tr>${cols.map(x => `<th class="${x.cls||''} ${x.k===sortKey?'sorted':''}" data-sort="${x.k}">${x.l}${x.k===sortKey?(sortDir<0?' ▾':' ▴'):''}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map(m => `<tr data-member="${esc(m.name)}">${cols.map(x => `<td class="${x.cls||''}">${x.f(m)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+    <div class="tablewrap"><table><thead><tr>${cols.map(x => `<th class="${x.cls||''} ${x.hide?'hide-sm':''} ${x.k===sortKey?'sorted':''}" data-sort="${x.k}">${x.l}${x.k===sortKey?(sortDir<0?' ▾':' ▴'):''}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(m => `<tr data-member="${esc(m.name)}">${cols.map(x => `<td class="${x.cls||''} ${x.hide?'hide-sm':''}">${x.f(m)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
   $('#rankf').value = rankFilter;
   $('#rankf').onchange = e => { rankFilter = e.target.value; renderRoster(); };
-  $('#copy-roster').onclick = () => copy(rows.map(m => `${m.rankHV}. ${m.name} (${m.rank}) HQ${m.hq} H+V ${fmtM(m.hv)}`).join('\n'), 'Roster copied');
+  $('#copy-roster').onclick = () => copy(rows.map(m => `${m.rankHV}. ${m.name} (${m.rank}) HQ${m.hq}${ARENA_OK ? ' arena ' + fmtM(m.arena||0) : ''} H+V ${fmtM(m.hv)}`).join('\n'), 'Roster copied');
   $('#view-roster').querySelectorAll('th[data-sort]').forEach(th => th.onclick = () => { const k = th.dataset.sort; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = cols.find(x=>x.k===k).str ? 1 : -1; } renderRoster(); });
 }
 
 // ---------- canyon
 function canyonSummary(){
-  const teams = { T1: [], T2: [] }, hvOf = n => (latest.find(m => m.name === n)||{}).hv || 0;
+  const teams = { T1: [], T2: [] }, hvOf = n => pw(latest.find(m => m.name === n));   // p.hv below = the chosen measure
   D.canyon.forEach(c => { const f = c.final || ''; const t = f.startsWith('T1') ? 'T1' : f.startsWith('T2') ? 'T2' : null; if (t) teams[t].push({ ...c, hv: hvOf(c.name), starter: f.endsWith('Starter') }); });
   Object.values(teams).forEach(a => a.sort((x,y) => y.hv - x.hv));
   const st = t => sum(teams[t].filter(p => p.starter), p => p.hv);
@@ -455,19 +479,19 @@ function renderCanyon(){
   D.canyon.forEach(c => { const a = c.avail === '' ? 'No vote' : c.avail; votes[a in votes ? a : 'No vote']++; });
   const vcol = { '18:00 only': 'var(--t1)', '23:00 only': 'var(--t2)', 'Both': 'var(--s3)', 'N/A': 'var(--fg-3)', 'No vote': 'var(--line-strong)' };
   const total = D.canyon.length;
-  const noVote = D.canyon.filter(c => c.avail === '').map(c => ({ ...c, hv: (latest.find(m => m.name === c.name)||{}).hv || 0 })).sort((a,b) => b.hv - a.hv);
+  const noVote = D.canyon.filter(c => c.avail === '').map(c => ({ ...c, hv: pw(latest.find(m => m.name === c.name)) })).sort((a,b) => b.hv - a.hv);
   const overrides = D.canyon.filter(c => c.manual);
   const teamCard = (key, label, session) => {
     const T = cs.teams[key], starters = T.filter(p => p.starter), subs = T.filter(p => !p.starter), stot = key==='T1' ? cs.s1 : cs.s2;
-    const row = p => `<div class="slot" data-tip="${esc(p.name)}|${p.avail || 'no vote'} · ${fmt(p.hv)} H+V · click to edit"><span class="n ${p.avail==='Both'?'both':''} ${p.manual?'override':''} ${pending[p.name]?'pending':''}" data-member="${esc(p.name)}" style="cursor:pointer">${esc(p.name)}</span><span class="v">${fmtM(p.hv)}</span></div>`;
-    return `<div class="panel c6 team ${key.toLowerCase()}"><div class="head"><div><h3 style="color:var(--${key.toLowerCase()})">${label} <span class="note">${esc(session)}</span></h3><div class="eyebrow">Starters H+V</div></div><div class="tot">${fmt(stot)}</div></div>
+    const row = p => `<div class="slot" data-tip="${esc(p.name)}|${p.avail || 'no vote'} · ${fmt(p.hv)} ${MLBL} · click to edit"><span class="n ${p.avail==='Both'?'both':''} ${p.manual?'override':''} ${pending[p.name]?'pending':''}" data-member="${esc(p.name)}" style="cursor:pointer">${esc(p.name)}</span><span class="v">${fmtM(p.hv)}</span></div>`;
+    return `<div class="panel c6 team ${key.toLowerCase()}"><div class="head"><div><h3 style="color:var(--${key.toLowerCase()})">${label} <span class="note">${esc(session)}</span></h3><div class="eyebrow">Starters ${MLBL}</div></div><div class="tot">${fmt(stot)}</div></div>
       <div class="mini" style="margin-top:6px"><span>${starters.length}/${M.starters} starters</span><span>${subs.length}/${M.subs} subs</span><span>avg starter ${fmtM(stot/Math.max(1,starters.length))}</span><button class="btn small" data-copy="${key}">Copy lineup</button></div>
       <div class="eyebrow" style="margin-top:10px">Starters</div><div class="slotlist">${starters.map(row).join('') || '<span class="v">none yet</span>'}</div>
       <div class="eyebrow" style="margin-top:10px">Substitutes</div><div class="slotlist">${subs.map(row).join('') || '<span class="v">none</span>'}</div></div>`;
   };
   const gmax = Math.max(cs.s1, cs.s2) || 1;
   $('#view-canyon').innerHTML = `<div class="grid">
-    <div class="panel c12"><h3>Starters balance <span class="note">only the 20 starters per team count; subs never do</span></h3>
+    <div class="panel c12"><h3>Starters balance <span class="note">${MLONG} of the top ${M.starters} starters per team; subs never count</span></h3>
       <div class="gap"><div><div class="mini" style="justify-content:space-between"><b style="color:var(--t1)">Team 1</b><span>${fmt(cs.s1)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s1/gmax*100).toFixed(1)}%;background:var(--t1)"></i></div></div>
         <div style="text-align:center"><div class="big" style="font-family:var(--display);font-size:28px;font-weight:700;color:${cs.gapPct!=null&&cs.gapPct<5?'var(--good)':'var(--bad)'}">${cs.gapPct==null?'—':cs.gapPct.toFixed(1)+'%'}</div><div class="eyebrow">${cs.strong} ahead by ${fmt(Math.abs(cs.gap))}</div></div>
         <div><div class="mini" style="justify-content:space-between"><b style="color:var(--t2)">Team 2</b><span>${fmt(cs.s2)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s2/gmax*100).toFixed(1)}%;background:var(--t2)"></i></div></div></div>
@@ -518,10 +542,13 @@ function renderRules(){
 function openMember(name){
   const m = latest.find(x => x.name === name); if (!m) return;
   const h = hist[name] || [], p = prevMap[name], c = canyonMap[name] || {};
-  const rows = [['Hero + vehicle', fmt(m.hv), p ? m.hv - p.hv : null], ['Hero', fmt(m.hero), p ? m.hero - p.hero : null], ['Mod vehicle', fmt(m.veh), p ? m.veh - p.veh : null], ['Structure', fmt(m.struct), p ? m.struct - p.struct : null], ['Tech', fmt(m.tech), p ? m.tech - p.tech : null], ['Troops', fmt(m.troop), p ? m.troop - p.troop : null], ['Total', fmt(m.total), p ? m.total - p.total : null], ['Kills', fmt(m.kills), p ? m.kills - p.kills : null]];
-  $('#drawer-card').innerHTML = `<div class="hd">${avatar(m)}<div><h2>${esc(m.name)}</h2><div class="rk" style="display:flex;gap:6px;margin-top:4px"><span class="chip ${m.rank}">${m.rank}</span>${m.title?`<span class="chip title">${esc(m.title)}</span>`:''}<span class="chip title">HQ ${m.hq}</span><span class="chip title">#${m.rankHV} by H+V</span></div></div><button class="btn close" id="close">Close</button></div>
-    <div class="eyebrow">H+V across ${h.length} snapshot${h.length>1?'s':''}</div>
-    ${h.length > 1 ? lineChart([{name:'H+V', vals: h.map(x=>x.hv), col:'var(--s1)'}], h.map(x=>dShort(x.date)), {label: name + ' hero plus vehicle over time'}) : '<p style="color:var(--fg-3)">Only one snapshot so far.</p>'}
+  const ah = h.filter(x => x.arena), useArena = BY_ARENA && ah.length > 1;
+  const rows = [...(ARENA_OK ? [['Arena power', fmt(m.arena), p && p.arena ? (m.arena||0) - p.arena : null]] : []), ['Hero + vehicle', fmt(m.hv), p ? m.hv - p.hv : null], ['Hero', fmt(m.hero), p ? m.hero - p.hero : null], ['Mod vehicle', fmt(m.veh), p ? m.veh - p.veh : null], ['Structure', fmt(m.struct), p ? m.struct - p.struct : null], ['Tech', fmt(m.tech), p ? m.tech - p.tech : null], ['Troops', fmt(m.troop), p ? m.troop - p.troop : null], ['Total', fmt(m.total), p ? m.total - p.total : null], ['Kills', fmt(m.kills), p ? m.kills - p.kills : null]];
+  $('#drawer-card').innerHTML = `<div class="hd">${avatar(m)}<div><h2>${esc(m.name)}</h2><div class="rk" style="display:flex;gap:6px;margin-top:4px"><span class="chip ${m.rank}">${m.rank}</span>${m.title?`<span class="chip title">${esc(m.title)}</span>`:''}<span class="chip title">HQ ${m.hq}</span><span class="chip title">#${m.rankHV} by ${MLBL}</span></div></div><button class="btn close" id="close">Close</button></div>
+    <div class="eyebrow">${useArena ? 'Arena power' : 'H+V'} across ${(useArena?ah:h).length} snapshot${(useArena?ah:h).length>1?'s':''}</div>
+    ${(useArena ? ah : h).length > 1
+      ? lineChart([{name: useArena ? 'Arena' : 'H+V', vals: (useArena?ah:h).map(x => useArena ? x.arena : x.hv), col:'var(--s1)'}], (useArena?ah:h).map(x=>dShort(x.date)), {label: name + (useArena ? ' arena power' : ' hero plus vehicle') + ' over time'})
+      : '<p style="color:var(--fg-3)">Only one snapshot so far' + (BY_ARENA && ARENA_OK ? ' with arena power; hero + vehicle history is below.' : '.') + '</p>'}
     <dl class="kv">${rows.map(([k,v,d]) => `<dt>${k}</dt><dd>${v}${d==null?'':` <span class="${d>0?'d-up':d<0?'d-down':'d-flat'}" style="font-size:12px">${signed(d)}</span>`}</dd>`).join('')}
       <dt>Canyon vote</dt><dd>${esc(c.avail || 'no vote')}</dd><dt>Canyon slot</dt><dd>${esc(c.final || '—')}</dd>${c.t10?`<dt>T10</dt><dd>${esc(c.t10)}</dd>`:''}<dt>UID</dt><dd class="mono" style="font-size:12px">${esc(m.uid)}</dd></dl>
     ${(READONLY && !WEB) ? '' : `<div class="edit"><label>Availability<select id="ed-avail">${AVAIL_OPTIONS.map(o => `<option value="${o}" ${o===(c.avail||'')?'selected':''}>${o || 'No vote'}</option>`).join('')}</select></label>
@@ -540,7 +567,7 @@ function openMember(name){
   $('#drawer').hidden = false;
   $('#close').onclick = closeDrawer;
   $('#copy-uid').onclick = () => copy(m.uid, 'UID copied');
-  $('#copy-line').onclick = () => copy(`${m.name} (${m.rank}, HQ ${m.hq}) H+V ${fmtM(m.hv)} · hero ${fmtM(m.hero)} · vehicle ${fmtM(m.veh)} · total ${fmtM(m.total)}`, 'Summary copied');
+  $('#copy-line').onclick = () => copy(`${m.name} (${m.rank}, HQ ${m.hq})${ARENA_OK ? ' arena ' + fmtM(m.arena||0) : ''} H+V ${fmtM(m.hv)} · hero ${fmtM(m.hero)} · vehicle ${fmtM(m.veh)} · total ${fmtM(m.total)}`, 'Summary copied');
 }
 function closeDrawer(){ $('#drawer').hidden = true; }
 $('#drawer').addEventListener('click', e => { if (e.target === $('#drawer')) closeDrawer(); });
@@ -680,7 +707,7 @@ $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') { const q = $(
 $('#unit').textContent = compact ? 'M' : '#';
 $('#unit').onclick = () => { compact = !compact; ls.set('jtb-unit', compact ? 'compact' : 'full'); $('#unit').textContent = compact ? 'M' : '#'; renderAll(); };
 $('#theme').onclick = () => { const r = document.documentElement, cur = r.getAttribute('data-theme'); const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.setAttribute('data-theme', dark ? 'light' : 'dark'); };
-const footText = () => `Data: JTB 293 Power Tracker, snapshot ${dLong(LATEST)} (${A.n} members, ${dates.length} snapshots since ${dShort(dates[0])}). Strength is hero + mod vehicle power because total power swings with troop rebuilds. ${WEB ? 'Open any member to set availability (alliance passcode) or a slot (officer passcode); changes reach the Canyon Teams sheet within a minute.' : READONLY ? 'This is the shared read-only copy; officers edit availability and slots on the command board.' : 'Availability and slot edits made here go to the Canyon Teams sheet through your Google Drive connection.'} Avatars are rank shields standing in for in-game portraits.`;
+const footText = () => `Data: JTB 293 Power Tracker, snapshot ${dLong(LATEST)} (${A.n} members, ${dates.length} snapshots since ${dShort(dates[0])}). Ranking and the Canyon balance use ${MLONG}${BY_ARENA ? ', the measure set in Canyon Teams C9' : ' because total power swings with troop rebuilds'}; growth charts stay on hero + vehicle, the only measure with history before Oct 5. ${WEB ? 'Open any member to set availability (alliance passcode) or a slot (officer passcode); changes reach the Canyon Teams sheet within a minute.' : READONLY ? 'This is the shared read-only copy; officers edit availability and slots on the command board.' : 'Availability and slot edits made here go to the Canyon Teams sheet through your Google Drive connection.'} Avatars are rank shields standing in for in-game portraits.`;
 $('#foot').textContent = footText(); updateSync();
 let wasNarrow = narrow(); addEventListener('resize', () => { if (narrow() !== wasNarrow) { wasNarrow = narrow(); renderAll(); } });
 const hash = location.hash.replace('#','');
