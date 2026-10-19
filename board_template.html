@@ -214,6 +214,8 @@ tbody tr { cursor: pointer; }
     <button class="tab" role="tab" data-view="roster">Roster</button>
     <button class="tab" role="tab" data-view="canyon">Canyon</button>
     <button class="tab" role="tab" data-view="trends">Trends</button>
+    <button class="tab" role="tab" data-view="champion">Champion Duel</button>
+    <button class="tab" role="tab" data-view="alliances">Alliances</button>
     <button class="tab" role="tab" data-view="rules">Rules</button>
   </div>
   <div class="tools">
@@ -229,7 +231,9 @@ tbody tr { cursor: pointer; }
   <section class="view" id="view-roster" hidden></section>
   <section class="view" id="view-canyon" hidden></section>
   <section class="view" id="view-trends" hidden></section>
-  <section class="view" id="view-rules" hidden></section>
+  <section class="view" id="view-champion" hidden></section>
+<section class="view" id="view-alliances" hidden></section>
+<section class="view" id="view-rules" hidden></section>
   <p class="foot" id="foot"></p>
 </div>
 <div class="tip" id="tip" hidden></div>
@@ -237,6 +241,7 @@ tbody tr { cursor: pointer; }
 <div class="toast" id="toast" hidden></div>
 
 <script type="application/json" id="data">/*__DATA__*/</script>
+<script id="cddata" type="application/json">{"cdTime":"2026-10-19 11:50–12:06 CDT","alTime":"2026-10-19 11:06 CDT","cd":[[1,"La tache","404x","GetWellSoonJack",293,880.9,18.1,10,0,10060667,"2026-10-19 11:50–12:06 CDT"],[2,"Notorious123 Sr","404x","GetWellSoonJack",293,484,19.4,9,1,9055413,"2026-10-19 11:50–12:06 CDT"],[3,"Boba-Fett","HOEz","House of Elderz",293,563.6,36.6,9,1,9052359,"2026-10-19 11:50–12:06 CDT"],[4,"Chupa","JTB","JOIN THE BATTLE",293,571.6,49.3,9,1,9049748,"2026-10-19 11:50–12:06 CDT"],[5,"hakattack","JTB","JOIN THE BATTLE",293,440.5,5.5,9,1,9048807,"2026-10-19 11:50–12:06 CDT"],[6,"Sajmonczan","HOEz","House of Elderz",293,361.1,15.3,9,1,9048307,"2026-10-19 11:50–12:06 CDT"],[7,"Rand2606","404x","GetWellSoonJack",293,397.7,9.1,9,1,9047205,"2026-10-19 11:50–12:06 CDT"],[8,"Lumberjax","404x","GetWellSoonJack",293,436.7,6.6,9,1,9046252,"2026-10-19 11:50–12:06 CDT"],[9,"Warner54","404b","Tig Ole Bitties",293,281.9,3.6,9,1,9037275,"2026-10-19 11:50–12:06 CDT"],[10,"LawrenceZ","JTB","JOIN THE BATTLE",293,471.3,28.7,8,2,8047146,"2026-10-19 11:50–12:06 CDT"],[11,"AlexTheGreat","404x","GetWellSoonJack",293,369.9,7.1,8,2,8045968,"2026-10-19 11:50–12:06 CDT"],[12,"Mr Tiki","NOxX","No Øne eXempt",293,436.2,13.2,8,2,8045389,"2026-10-19 11:50–12:06 CDT"],[13,"Captain rex","HOEz","House of Elderz",293,372.6,5.4,8,2,8044352,"2026-10-19 11:50–12:06 CDT"],[14,"3K JQK","JTB","JOIN THE BATTLE",293,317,11.6,8,2,8042684,"2026-10-19 11:50–12:06 CDT"],[15,"Lekja789","JTB","JOIN THE BATTLE",293,302.9,6.9,8,2,8041098,"2026-10-19 11:50–12:06 CDT"],[16,"VanDammage","404x","GetWellSoonJack",293,383.6,6.5,8,2,8040970,"2026-10-19 11:50–12:06 CDT"],[17,"슈퍼맨","JTB","JOIN THE BATTLE",293,433.5,16.5,8,2,8040673,"2026-10-19 11:50–12:06 CDT"],[18,"Ninnjans","404b","Tig Ole Bitties",293,393.3,4.4,8,2,8038099,"2026-10-19 11:50–12:06 CDT"],[19,"H3roK1ller","JTB","JOIN THE BATTLE",293,339,5.1,8,2,8038074,"2026-10-19 11:50–12:06 CDT"],[20,"War-Maker","JTB","JOIN THE BATTLE",293,370,5.7,8,2,8037882,"2026-10-19 11:50–12:06 CDT"],[21,"Zak Ita","HOEz","House of Elderz",293,367.8,2.9,8,2,8037648,"2026-10-19 11:50–12:06 CDT"],[22,"BENji","HOEz","House of Elderz",293,342.1,10.2,8,2,8036836,"2026-10-19 11:50–12:06 CDT"],[23,"b00f","HOEz","House of Elderz",293,288.9,9.7,8,2,8036516,"2026-10-19 11:50–12:06 CDT"],[24,"RKHAS","404b","Tig Ole Bitties",293,410.5,5.9,8,2,8036358,"2026-10-19 11:50–12:06 CDT"],[25,"VerGinZz","JTB","JOIN THE BATTLE",293,347,5.3,8,2,8036324,"2026-10-19 11:50–12:06 CDT"],[26,"WestPLAY VII","JTB","JOIN THE BATTLE",293,317.2,4.5,8,2,8036230,"2026-10-19 11:50–12:06 CDT"],[27,"Vaggi","JTB","JOIN THE BATTLE",293,381.9,5.1,8,2,8035880,"2026-10-19 11:50–12:06 CDT"],[28,"Smooth OP Radar","404x","GetWellSoonJack",293,358.4,6.1,8,2,8035381,"2026-10-19 11:50–12:06 CDT"],[29,"Aadrian","JTB","JOIN THE BATTLE",293,296.4,4.4,8,2,8035178,"2026-10-19 11:50–12:06 CDT"],[30,"ViperXST","404x","GetWellSoonJack",293,332.6,3.7,8,2,8035065,"2026-10-19 11:50–12:06 CDT"],[31,"FelipeFG85","HOEz","House of Elderz",293,342.1,9.2,8,2,8034813,"2026-10-19 11:50–12:06 CDT"],[32,"Gui-C","JTB","JOIN THE BATTLE",293,393.8,8.2,8,2,8034441,"2026-10-19 11:50–12:06 CDT"],[33,"RaZZor","404x","GetWellSoonJack",293,375.5,4.2,8,2,8034102,"2026-10-19 11:50–12:06 CDT"],[34,"Kylo-Ren","HOEz","House of Elderz",293,334.9,3.1,8,2,8034020,"2026-10-19 11:50–12:06 CDT"],[35,"mush£r","JTB","JOIN THE BATTLE",293,282.8,5.6,8,2,8033977,"2026-10-19 11:50–12:06 CDT"],[36,"Mischief","JTB","JOIN THE BATTLE",293,266.7,5.2,8,2,8033656,"2026-10-19 11:50–12:06 CDT"],[37,"CMDR Cody 66","HOEz","House of Elderz",293,351.8,5,8,2,8033424,"2026-10-19 11:50–12:06 CDT"],[38,"xTrioo","HOEz","House of Elderz",293,281.6,5.3,8,2,8031907,"2026-10-19 11:50–12:06 CDT"],[39,"LuvLeeMsL","HOEz","House of Elderz",293,335.3,3.7,8,2,8031772,"2026-10-19 11:50–12:06 CDT"],[40,"rooly06","404x","GetWellSoonJack",293,384.1,5.4,8,2,8031160,"2026-10-19 11:50–12:06 CDT"],[41,"NØRTHSIDE","404b","Tig Ole Bitties",293,324.8,4.2,8,2,8031050,"2026-10-19 11:50–12:06 CDT"],[42,"Nøize","HOEz","House of Elderz",293,372.6,12.9,8,2,8030703,"2026-10-19 11:50–12:06 CDT"],[43,"KizIL Elma","NOxX","No Øne eXempt",293,330.3,2.9,8,2,8029610,"2026-10-19 11:50–12:06 CDT"],[44,"Yáng Wawa","404x","GetWellSoonJack",293,284.5,6.1,8,2,8026607,"2026-10-19 11:50–12:06 CDT"],[45,"NaughtyNicole","JTB","JOIN THE BATTLE",293,442.4,7,7,3,7041027,"2026-10-19 11:50–12:06 CDT"],[46,"Rodonas","HOEz","House of Elderz",293,322.5,10,7,3,7032327,"2026-10-19 11:50–12:06 CDT"],[47,"NIKOS 8","NOxX","No Øne eXempt",293,364.3,4.2,7,3,7032322,"2026-10-19 11:50–12:06 CDT"],[48,"Amar46","JTB","JOIN THE BATTLE",293,295.6,5.2,7,3,7031443,"2026-10-19 11:50–12:06 CDT"],[49,"SP4RT4N","404x","GetWellSoonJack",293,355.5,4.6,7,3,7031326,"2026-10-19 11:50–12:06 CDT"],[50,"Senpapi","404x","GetWellSoonJack",293,311.4,3,7,3,7031309,"2026-10-19 11:50–12:06 CDT"],[51,"-THUNDER-","JTB","JOIN THE BATTLE",293,341.7,7.8,7,3,7030604,"2026-10-19 11:50–12:06 CDT"],[52,"ha young","JTB","JOIN THE BATTLE",293,318.9,6.4,7,3,7030220,"2026-10-19 11:50–12:06 CDT"],[53,"Clark Kent","404x","GetWellSoonJack",293,321.1,6.4,7,3,7029949,"2026-10-19 11:50–12:06 CDT"],[54,"Cybz","404x","GetWellSoonJack",293,318.8,2.9,7,3,7029892,"2026-10-19 11:50–12:06 CDT"],[55,"Cupcakee","HOEz","House of Elderz",293,319,5.7,7,3,7028592,"2026-10-19 11:50–12:06 CDT"],[56,"MizzTwiiggy","404x","GetWellSoonJack",293,359.4,6.6,7,3,7028542,"2026-10-19 11:50–12:06 CDT"],[57,"Mel","404x","GetWellSoonJack",293,344.2,3,7,3,7027464,"2026-10-19 11:50–12:06 CDT"],[58,"baby x 2025","JTB","JOIN THE BATTLE",293,312.1,18.7,7,3,7027387,"2026-10-19 11:50–12:06 CDT"],[59,"Savesz","JTB","JOIN THE BATTLE",293,313.5,4.1,7,3,7027191,"2026-10-19 11:50–12:06 CDT"],[60,"AfRoDiTa","NOxX","No Øne eXempt",293,331,2.7,7,3,7027058,"2026-10-19 11:50–12:06 CDT"],[61,"Hunter","404x","GetWellSoonJack",293,322.2,12.8,7,3,7026977,"2026-10-19 11:50–12:06 CDT"],[62,"Unchained","JTB","JOIN THE BATTLE",293,326.9,4.3,7,3,7026598,"2026-10-19 11:50–12:06 CDT"],[63,"Fade4PLAY20","404x","GetWellSoonJack",293,299.3,2.8,7,3,7025932,"2026-10-19 11:50–12:06 CDT"],[64,"ALF","NOxX","No Øne eXempt",293,240.5,2.5,7,3,7025893,"2026-10-19 11:50–12:06 CDT"],[65,"ERWINAS","JTB","JOIN THE BATTLE",293,246.2,1.3,7,3,7025371,"2026-10-19 11:50–12:06 CDT"],[66,"LazyBug","404x","GetWellSoonJack",293,268.1,2,7,3,7025352,"2026-10-19 11:50–12:06 CDT"],[67,"BLR","HOEz","House of Elderz",293,279.9,2.1,7,3,7025307,"2026-10-19 11:50–12:06 CDT"],[68,"ZacKrosS","HOEz","House of Elderz",293,365.1,9.4,7,3,7024442,"2026-10-19 11:50–12:06 CDT"],[69,"AgoZa","HOEz","House of Elderz",293,266,1.2,7,3,7024380,"2026-10-19 11:50–12:06 CDT"],[70,"Aleila","JTB","JOIN THE BATTLE",293,282.3,3.5,7,3,7024069,"2026-10-19 11:50–12:06 CDT"],[71,"citney","Bibi","JTBi",293,258.8,1,7,3,7020699,"2026-10-19 11:50–12:06 CDT"],[72,"tom1203","404x","GetWellSoonJack",293,380.1,5.5,6,3,6028019,"2026-10-19 11:50–12:06 CDT"],[73,"LEONIDAS300","HOEz","House of Elderz",293,347.9,4.1,6,3,6027261,"2026-10-19 11:50–12:06 CDT"],[74,"Ray9754","404x","GetWellSoonJack",293,304.3,4.3,6,3,6026850,"2026-10-19 11:50–12:06 CDT"],[75,"BB","JTB","JOIN THE BATTLE",293,316.3,3.6,6,3,6026794,"2026-10-19 11:50–12:06 CDT"],[76,"alexandhern","HOEz","House of Elderz",293,304.4,12.8,6,3,6026673,"2026-10-19 11:50–12:06 CDT"],[77,"TwRuLeS123 Sr","404x","GetWellSoonJack",293,302.1,4.8,6,3,6025947,"2026-10-19 11:50–12:06 CDT"],[78,"LiamtheHunter","404b","Tig Ole Bitties",293,338.4,3.4,6,3,6025138,"2026-10-19 11:50–12:06 CDT"],[79,"XTRA BULKY","HOEz","House of Elderz",293,291.8,5,6,3,6025051,"2026-10-19 11:50–12:06 CDT"],[80,"xShylockx","JTB","JOIN THE BATTLE",293,346.9,3.5,6,3,6024920,"2026-10-19 11:50–12:06 CDT"],[81,"-M3-","JTB","JOIN THE BATTLE",293,331.7,4.9,6,3,6024776,"2026-10-19 11:50–12:06 CDT"],[82,"PLataran","404b","Tig Ole Bitties",293,291.1,10.8,6,3,6024101,"2026-10-19 11:50–12:06 CDT"],[83,"Sfom Bandit","404b","Tig Ole Bitties",293,320.1,4.4,6,3,6023586,"2026-10-19 11:50–12:06 CDT"],[84,"Mimi Shannon","NOxX","No Øne eXempt",293,284.5,4.2,6,3,6023457,"2026-10-19 11:50–12:06 CDT"],[85,"Sam929Sam","404b","Tig Ole Bitties",293,291.9,2.1,6,3,6023422,"2026-10-19 11:50–12:06 CDT"],[86,"Stargazerz","404x","GetWellSoonJack",293,274,4.1,6,3,6023366,"2026-10-19 11:50–12:06 CDT"],[87,"Machonja","404x","GetWellSoonJack",293,290.3,2.8,6,3,6023333,"2026-10-19 11:50–12:06 CDT"],[88,"Deadpool X","404x","GetWellSoonJack",293,296.5,4.8,6,3,6023294,"2026-10-19 11:50–12:06 CDT"],[89,"Vänta","NOxX","No Øne eXempt",293,262,2.5,6,3,6023237,"2026-10-19 11:50–12:06 CDT"],[90,"Jerden","HOEz","House of Elderz",293,303.8,4.5,6,3,6023229,"2026-10-19 11:50–12:06 CDT"],[91,"aeq","404x","GetWellSoonJack",293,379.9,3.2,6,3,6022956,"2026-10-19 11:50–12:06 CDT"],[92,"Daft Ren","HOEz","House of Elderz",293,274.5,3.2,6,3,6022660,"2026-10-19 11:50–12:06 CDT"],[93,"STARFISH","404x","GetWellSoonJack",293,344.1,4.7,6,3,6022561,"2026-10-19 11:50–12:06 CDT"],[94,"Terste","JTB","JOIN THE BATTLE",293,299.7,2.2,6,3,6022134,"2026-10-19 11:50–12:06 CDT"],[95,"Hickory Nuts","404x","GetWellSoonJack",293,260.1,1.4,6,3,6021970,"2026-10-19 11:50–12:06 CDT"],[96,"Fernando","404x","GetWellSoonJack",293,303.4,8.2,6,3,6021724,"2026-10-19 11:50–12:06 CDT"],[97,"CALAMITY G","HOEz","House of Elderz",293,285.9,1.3,6,3,6021524,"2026-10-19 11:50–12:06 CDT"],[98,"OneNDone","NOxX","No Øne eXempt",293,223,2,6,3,6021434,"2026-10-19 11:50–12:06 CDT"],[99,"Heyl","Bibi","JTBi",293,269.3,3.7,6,3,6021043,"2026-10-19 11:50–12:06 CDT"],[100,"Gregor 1957","JTB","JOIN THE BATTLE",293,281.8,2.5,6,3,6021005,"2026-10-19 11:50–12:06 CDT"]],"alliances":[[1,"404x","GetWellSoonJack",27222280622,"2026-10-19 11:06 CDT"],[2,"JTB","JOIN THE BATTLE",27018025596,"2026-10-19 11:06 CDT"],[3,"HOEz","House of Elderz",24848461235,"2026-10-19 11:06 CDT"],[4,"404b","Tig Ole Bitties",22239016374,"2026-10-19 11:06 CDT"],[5,"NOxX","No Øne eXempt",22190600868,"2026-10-19 11:06 CDT"],[6,"Bibi","JTBi",19079867538,"2026-10-19 11:06 CDT"],[7,"293F","Rising Force",8300889881,"2026-10-19 11:06 CDT"],[8,"404s","Ali4ncNotFnd",7530457878,"2026-10-19 11:06 CDT"]]}</script>
 <script>
 (function(){
 let D = JSON.parse(document.getElementById('data').textContent);
@@ -509,22 +514,80 @@ function renderCanyon(){
 }
 
 // ---------- trends
+// ---------- trends (metric picker: hero / vehicle / science / structure / arena / troops / kills / total, singly or combined)
+const TMET = [['hero','Hero'],['veh','Vehicle'],['tech','Science'],['struct','Structure'],['arena','Arena'],['troop','Troops'],['kills','Kills'],['total','Total']];
+let TM = (ls.get('jtb-tm') || 'hero,veh').split(',').filter(k => TMET.some(t => t[0] === k)); if (!TM.length) TM = ['hero','veh'];
+let TCOMB = ls.get('jtb-tcomb') !== '0', TFROM = '';
+const tv = m => TM.reduce((s,k) => s + ((m && m[k]) || 0), 0);
+const tl = () => TM.map(k => TMET.find(t => t[0] === k)[1]).join(' + ');
+const tok = q => q && TM.every(k => k !== 'arena' || q.arena);
 function renderTrends(){
-  const both = latest.filter(m => prevMap[m.name]).map(m => ({ label: m.name, v: m.hv - prevMap[m.name].hv, sub: pct(m.hv, prevMap[m.name].hv) }));
-  both.sort((a,b) => b.v - a.v);
-  const up = both.filter(x => x.v > 0).slice(0, 10), down = both.filter(x => x.v < 0).slice(-10).reverse();
-  const joined = latest.filter(m => !prevMap[m.name]), left = (byDate[PREV]||[]).filter(p => !latest.find(m => m.name === p.name));
-  const first = byDate[dates[0]]; const firstMap = {}; first.forEach(r => firstMap[r.name] = r);
-  const since = latest.filter(m => firstMap[m.name]).map(m => ({ label: m.name, v: m.hv - firstMap[m.name].hv, sub: pct(m.hv, firstMap[m.name].hv) })).sort((a,b) => b.v - a.v).slice(0, 10);
+  const from = (TFROM && dates.includes(TFROM) && TFROM < LATEST) ? TFROM : PREV, fMap = {}; (byDate[from]||[]).forEach(r => fMap[r.name] = r);
+  const fd = dates.find(d => byDate[d].some(r => tok(r))) || dates[0], firstMap = {}; (byDate[fd]||[]).forEach(r => firstMap[r.name] = r);
+  const delta = map => latest.filter(m => tok(map[m.name])).map(m => ({ label: m.name, v: tv(m) - tv(map[m.name]), sub: pct(tv(m), tv(map[m.name])) })).sort((a,b) => b.v - a.v);
+  const both = delta(fMap), up = both.filter(x => x.v > 0).slice(0, 10), down = both.filter(x => x.v < 0).slice(-10).reverse();
+  const since = delta(firstMap).slice(0, 10);
+  const joined = latest.filter(m => !fMap[m.name]), left = (byDate[from]||[]).filter(p => !latest.find(m => m.name === p.name));
+  const pts = dates.map(d => ({ d, rows: byDate[d].filter(r => TM.every(k => k !== 'arena' || r.arena)) })).filter(p => p.rows.length && (!TM.includes('arena') || p.rows.some(r => r.arena)));
+  const cols = ['var(--s1)','var(--s2)','var(--s3, var(--info))','var(--good)','var(--warn)','var(--bad)','var(--accent)','var(--fg-2)'];
+  const series = TCOMB || TM.length === 1 ? [{ name: tl(), vals: pts.map(p => sum(p.rows, tv)), col: cols[0] }] : TM.map((k,i) => ({ name: TMET.find(t=>t[0]===k)[1], vals: pts.map(p => sum(p.rows, r => r[k])), col: cols[i % cols.length] }));
+  const lab = pts.map(p => dShort(p.d));
+  const note = `<span class="note">${esc(tl())}</span>`;
   $('#view-trends').innerHTML = `<div class="grid">
-    <div class="panel c6"><h3>Biggest gains since ${dShort(PREV)} <span class="note">H+V</span></h3>${up.length ? divergeBars(up, {label:'Top gainers'}) : '<p class="v">No gains recorded.</p>'}</div>
-    <div class="panel c6"><h3>Declines since ${dShort(PREV)} <span class="note">H+V</span></h3>${down.length ? divergeBars(down, {label:'Top decliners'}) : '<p style="color:var(--fg-3)">Nobody lost hero or vehicle power. Good week.</p>'}</div>
-    <div class="panel c8"><h3>Hero vs vehicle, alliance-wide</h3>${lineChart([{name:'Hero', vals: alliance.map(a=>a.hero), col:'var(--s1)'},{name:'Mod vehicle', vals: alliance.map(a=>a.veh), col:'var(--s2)'}], alliance.map(a=>dShort(a.date)), {label:'Alliance hero and vehicle power by snapshot'})}
-      <div class="legend"><span><i style="background:var(--s1)"></i>Hero</span><span><i style="background:var(--s2)"></i>Mod vehicle</span></div></div>
-    <div class="panel c4"><h3>Since first snapshot <span class="note">${dShort(dates[0])} → ${dShort(LATEST)}</span></h3>${divergeBars(since, {label:'Top gainers since first snapshot'})}</div>
-    <div class="panel c6"><h3>Joined since ${dShort(PREV)} · ${joined.length}</h3><div class="mini">${joined.map(m => `<span data-member="${esc(m.name)}" style="cursor:pointer">${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
-    <div class="panel c6"><h3>Left since ${dShort(PREV)} · ${left.length}</h3><div class="mini">${left.map(m => `<span>${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
+    <div class="panel c12"><div class="filters"><h3 style="margin:0">Track <span class="note">pick one or combine · applies to every chart on this tab</span></h3>
+      ${TMET.map(([k,l]) => `<button class="btn small" data-tm="${k}" aria-pressed="${TM.includes(k)}" style="${TM.includes(k)?'background:var(--accent);color:var(--bg);border-color:var(--accent)':''}">${l}</button>`).join('')}
+      <button class="btn small" data-tpre="hero,veh">Hero + vehicle</button>
+      <label class="count"><input type="checkbox" id="tcomb" ${TCOMB?'checked':''}> combine into one line</label>
+      <label class="count">Compare against <select id="tfrom">${dates.slice(0,-1).map(d => `<option value="${d}" ${d===from?'selected':''}>${dShort(d)}</option>`).join('')}</select></label></div>
+      ${TM.includes('arena') ? `<p class="count" style="margin:8px 0 0">Arena power is only recorded from ${dShort(dates.find(d => byDate[d].some(r => r.arena)) || LATEST)} on, so its history starts there.</p>` : ''}</div>
+    <div class="panel c8"><h3>Alliance ${esc(tl())} by snapshot</h3>${pts.length > 1 ? lineChart(series, lab, {label:'Alliance '+tl()+' by snapshot'}) : '<p class="count">Only one snapshot has this measure so far.</p>'}
+      <div class="legend">${series.map(s => `<span><i style="background:${s.col}"></i>${esc(s.name)}</span>`).join('')}</div></div>
+    <div class="panel c4"><h3>Since ${dShort(fd)} ${note}</h3>${since.length ? divergeBars(since, {label:'Top gainers since first snapshot'}) : '<p class="count">No overlap yet.</p>'}</div>
+    <div class="panel c6"><h3>Biggest gains since ${dShort(from)} ${note}</h3>${up.length ? divergeBars(up, {label:'Top gainers'}) : '<p class="count">No gains recorded.</p>'}</div>
+    <div class="panel c6"><h3>Declines since ${dShort(from)} ${note}</h3>${down.length ? divergeBars(down, {label:'Top decliners'}) : '<p style="color:var(--fg-3)">Nobody lost power on this measure.</p>'}</div>
+    <div class="panel c6"><h3>Joined since ${dShort(from)} · ${joined.length}</h3><div class="mini">${joined.map(m => `<span data-member="${esc(m.name)}" style="cursor:pointer">${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
+    <div class="panel c6"><h3>Left since ${dShort(from)} · ${left.length}</h3><div class="mini">${left.map(m => `<span>${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
   </div>`;
+  const v = $('#view-trends'), save = () => { ls.set('jtb-tm', TM.join(',')); renderTrends(); };
+  v.querySelectorAll('[data-tm]').forEach(b => b.onclick = () => { const k = b.dataset.tm; TM = TM.includes(k) ? (TM.length > 1 ? TM.filter(x => x !== k) : TM) : TMET.map(t=>t[0]).filter(x => TM.includes(x) || x === k); save(); });
+  v.querySelectorAll('[data-tpre]').forEach(b => b.onclick = () => { TM = b.dataset.tpre.split(','); save(); });
+  $('#tcomb').onchange = e => { TCOMB = e.target.checked; ls.set('jtb-tcomb', TCOMB ? '1' : '0'); renderTrends(); };
+  $('#tfrom').onchange = e => { TFROM = e.target.value; renderTrends(); };
+}
+
+// ---------- Champion Duel + other alliances (snapshot data; refreshed with the weekly capture)
+const CD = JSON.parse(document.getElementById('cddata').textContent);
+let cdAl = 'all', cdSort = 'rank', cdDir = 1;
+const cdStamp = `Snapshot ${esc(CD.cdTime)}`, alStamp = `Snapshot ${esc(CD.alTime)}`;
+function renderChampion(){
+  const q = ($('#cdq') || {value:''}).value.trim().toLowerCase(), idx = {rank:0,name:1,tag:2,power:5,kills:6,w:7,pts:9}, i = idx[cdSort];
+  const rows = CD.cd.filter(r => (cdAl === 'all' || r[2] === cdAl) && (!q || r[1].toLowerCase().includes(q))).sort((a,b) => (typeof a[i]==='string' ? a[i].localeCompare(b[i]) : a[i]-b[i]) * cdDir);
+  const tags = [...new Set(CD.cd.map(r => r[2]))];
+  const th = (k,l,c) => `<th class="${c||''}" data-cs="${k}">${l}${cdSort===k?(cdDir<0?' ▾':' ▴'):''}</th>`;
+  $('#view-champion').innerHTML = `<div class="panel c12"><div class="filters"><h3 style="margin:0">Champion Duel · top ${CD.cd.length} <span class="note">${cdStamp} · server 293 qualifier</span></h3>
+    <select id="cdal"><option value="all">All alliances</option>${tags.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
+    <input id="cdq" placeholder="Search name" value="${esc(q)}" style="background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px">
+    <span class="count">${rows.length} shown · power and kills in millions, as shown in the Champion Duel panel</span></div>
+    <div class="tablewrap"><table><thead><tr>${th('rank','#')}${th('name','Player','l')}${th('tag','Alliance','l')}${th('power','Power')}${th('kills','Kills')}${th('w','W–L')}${th('pts','Points')}</tr></thead>
+    <tbody>${rows.map(r => `<tr${r[2]==='JTB'?' style="background:var(--panel-2)"':''}><td>${r[0]}</td><td class="l">${esc(r[1])}</td><td class="l">${esc(r[2])}</td><td>${r[5] != null ? r[5].toFixed(1)+'M' : '—'}</td><td>${r[6] != null ? r[6].toFixed(1)+'M' : '—'}</td><td>${r[7]}–${r[8]}</td><td>${Number(r[9]).toLocaleString('en-US')}</td></tr>`).join('')}</tbody></table></div></div>`;
+  $('#cdal').value = cdAl; $('#cdal').onchange = e => { cdAl = e.target.value; renderChampion(); };
+  $('#cdq').oninput = () => { const p = $('#cdq').selectionStart; renderChampion(); const el = $('#cdq'); el.focus(); el.setSelectionRange(p,p); };
+  $('#view-champion').querySelectorAll('th[data-cs]').forEach(t => t.onclick = () => { const k = t.dataset.cs; if (cdSort === k) cdDir *= -1; else { cdSort = k; cdDir = (k==='name'||k==='tag'||k==='rank') ? 1 : -1; } renderChampion(); });
+}
+function renderAlliances(){
+  const by = {}; CD.cd.forEach(r => { const a = by[r[2]] ??= { n:0, best:999, pts:0, pw:0, pn:0 }; a.n++; a.best = Math.min(a.best, r[0]); a.pts += +r[9]||0; if (r[5] != null) { a.pw += r[5]; a.pn++; } });
+  const mx = Math.max(...CD.alliances.map(a => a[3]));
+  const bands = [[0,300e6,'< 300M'],[300e6,400e6,'300–400M'],[400e6,500e6,'400–500M'],[500e6,1e12,'500M+']];
+  const bm = m => (BY_ARENA ? m.arena : m.hv) || 0;
+  const slice = (name, keyf, order) => { const g = {}; latest.forEach(m => (g[keyf(m)] ??= []).push(m)); const ks = order || Object.keys(g).sort(); return `<div class="panel c4"><h3>${name}</h3><table><thead><tr><th class="l">Group</th><th>Members</th><th>Avg ${MLBL}</th><th>Total</th></tr></thead><tbody>${ks.filter(k => g[k]).map(k => `<tr><td class="l">${esc(k)}</td><td>${g[k].length}</td><td>${fmt(sum(g[k], bm)/g[k].length)}</td><td>${fmt(sum(g[k], bm))}</td></tr>`).join('')}</tbody></table></div>`; };
+  $('#view-alliances').innerHTML = `<div class="grid">
+    <div class="panel c12"><h3>Server 293 alliances by power <span class="note">${alStamp}</span></h3><div class="tablewrap"><table><thead><tr><th>#</th><th class="l">Alliance</th><th class="l">Name</th><th>Power</th><th>Gap to JTB</th><th>Top-100 entrants</th><th>Best duel rank</th><th>Avg entrant power</th></tr></thead>
+    <tbody>${CD.alliances.map(a => { const s = by[a[1]] || {n:0}; const jt = CD.alliances.find(x => x[1]==='JTB')[3]; return `<tr${a[1]==='JTB'?' style="background:var(--panel-2)"':''}><td>${a[0]}</td><td class="l">${esc(a[1])}</td><td class="l">${esc(a[2])}</td><td><span class="bar" style="width:${Math.round(a[3]/mx*90)}px"></span> ${(a[3]/1e9).toFixed(2)}B</td><td>${a[1]==='JTB'?'—':((a[3]-jt)/1e9>0?'+':'')+((a[3]-jt)/1e9).toFixed(2)+'B'}</td><td>${s.n}</td><td>${s.n ? s.best : '—'}</td><td>${s.pn ? (s.pw/s.pn).toFixed(0)+'M' : '—'}</td></tr>`; }).join('')}</tbody></table></div>
+      <p class="count" style="margin-top:8px">Entrant columns come from the Champion Duel qualifier top ${CD.cd.length} (${cdStamp.toLowerCase()}); power ranking from the in-game alliance list.</p></div>
+    ${slice('JTB by rank', m => m.rank, ['R5','R4','R3','R2','R1'])}
+    ${slice('JTB by ' + MLONG + ' band', m => (bands.find(b => bm(m) >= b[0] && bm(m) < b[1]) || bands[0])[2], bands.map(b => b[2]))}
+    ${slice('JTB by HQ level', m => 'HQ ' + m.hq, [...new Set(latest.map(m => m.hq))].sort((a,b) => b-a).map(h => 'HQ ' + h))}
+    <div class="panel c12"><p class="count">JTB roster slices use the ${dLong(LATEST)} snapshot. The full ranked roster and per-metric trends are on the Roster and Trends tabs.</p></div></div>`;
 }
 
 // ---------- rules
@@ -691,7 +754,7 @@ function copy(text, msg){
 let toastT; function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
 
 // ---------- tabs, search, toggles
-const views = { overview: renderOverview, roster: renderRoster, canyon: renderCanyon, trends: renderTrends, rules: renderRules };
+const views = { overview: renderOverview, roster: renderRoster, canyon: renderCanyon, trends: renderTrends, champion: renderChampion, alliances: renderAlliances, rules: renderRules };
 let current = null;
 function show(v){
   if (!views[v]) v = 'overview';
