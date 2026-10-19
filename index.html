@@ -375,13 +375,13 @@ function hbars(rows, opts={}){ // rows: {label, segs:[{v,col,name}], total, sub}
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
 }
 function divergeBars(rows, opts={}){ // rows: {label, v}
-  const W = chartW(), LW = narrow() ? 96 : 130, rh = 22, H = rows.length*rh + 6, mid = LW + (W-LW-70)/2;
-  const max = Math.max(...rows.map(r => Math.abs(r.v))) || 1; const sx = v => Math.abs(v)/max*((W-LW-70)/2 - 4);
+  const W = chartW(), LW = narrow() ? 96 : 130, rh = 22, H = rows.length*rh + 6, allNeg = rows.length > 0 && rows.every(r => r.v < 0), mid = allNeg ? W - 14 : LW + (W-LW-70)/2;
+  const max = Math.max(...rows.map(r => Math.abs(r.v))) || 1; const sx = v => Math.abs(v)/max*(allNeg ? mid - LW - 70 : (W-LW-70)/2 - 4);
   let g = `<line class="axis" x1="${mid}" x2="${mid}" y1="0" y2="${H}"/>`;
   rows.forEach((r,i) => {
     const y = 3 + i*rh, w = sx(r.v), pos = r.v >= 0;
     g += `<text class="lbl" x="${LW-8}" y="${y+14}" text-anchor="end">${esc(narrow() && r.label.length > 13 ? r.label.slice(0,12)+'…' : r.label)}</text>`;
-    g += `<rect x="${(pos?mid+1:mid-1-w).toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="14" rx="3" fill="${pos?'var(--good)':'var(--bad)'}" data-tip="${esc(r.label)}|${signed(r.v)} H+V (${r.sub||''})"/>`;
+    g += `<rect x="${(pos?mid+1:mid-1-w).toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="14" rx="3" fill="${pos?'var(--good)':'var(--bad)'}" data-tip="${esc(r.label)}|${signed(r.v)} (${r.sub||''})"/>`;
     g += `<text class="lbl-strong" x="${(pos?mid+w+7:mid-w-7).toFixed(1)}" y="${y+15}" text-anchor="${pos?'start':'end'}">${signed(r.v)}</text>`;
   });
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
