@@ -376,13 +376,14 @@ function hbars(rows, opts={}){ // rows: {label, segs:[{v,col,name}], total, sub}
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
 }
 function divergeBars(rows, opts={}){ // rows: {label, v}
-  const W = chartW(), LW = narrow() ? 96 : 130, rh = 22, H = rows.length*rh + 6, allNeg = rows.length > 0 && rows.every(r => r.v < 0), mid = allNeg ? W - 14 : LW + (W-LW-70)/2;
-  const max = Math.max(...rows.map(r => Math.abs(r.v))) || 1; const sx = v => Math.abs(v)/max*(allNeg ? mid - LW - 70 : (W-LW-70)/2 - 4);
+  const W = chartW(), LW = narrow() ? 96 : 130, rh = 22, H = rows.length*rh + 6, allNeg = rows.length > 0 && (rows.every(r => r.v < 0) || rows.every(r => r.v >= 0)), mid = allNeg ? LW : LW + (W-LW-70)/2;
+  // One-sided lists (all gains or all declines) read like the gains list: axis at the names, red bars growing right by size of the drop.
+  const max = Math.max(...rows.map(r => Math.abs(r.v))) || 1; const sx = v => Math.abs(v)/max*(allNeg ? W - LW - 70 : (W-LW-70)/2 - 4);
   let g = `<line class="axis" x1="${mid}" x2="${mid}" y1="0" y2="${H}"/>`;
   rows.forEach((r,i) => {
-    const y = 3 + i*rh, w = sx(r.v), pos = r.v >= 0;
+    const y = 3 + i*rh, w = sx(r.v), pos = r.v >= 0 || allNeg;
     g += `<text class="lbl" x="${LW-8}" y="${y+14}" text-anchor="end">${esc(narrow() && r.label.length > 13 ? r.label.slice(0,12)+'…' : r.label)}</text>`;
-    g += `<rect x="${(pos?mid+1:mid-1-w).toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="14" rx="3" fill="${pos?'var(--good)':'var(--bad)'}" data-tip="${esc(r.label)}|${signed(r.v)} (${r.sub||''})"/>`;
+    g += `<rect x="${(pos?mid+1:mid-1-w).toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="14" rx="3" fill="${r.v >= 0?'var(--good)':'var(--bad)'}" data-tip="${esc(r.label)}|${signed(r.v)} (${r.sub||''})"/>`;
     g += `<text class="lbl-strong" x="${(pos?mid+w+7:mid-w-7).toFixed(1)}" y="${y+15}" text-anchor="${pos?'start':'end'}">${signed(r.v)}</text>`;
   });
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
@@ -518,18 +519,23 @@ function renderCanyon(){
 // ---------- trends (metric picker: hero / vehicle / science / structure / arena / troops / kills / total, singly or combined)
 const TMET = [['hero','Hero'],['veh','Vehicle'],['tech','Science'],['struct','Structure'],['arena','Arena'],['troop','Troops'],['kills','Kills'],['total','Total']];
 let TM = (ls.get('jtb-tm') || 'hero,veh').split(',').filter(k => TMET.some(t => t[0] === k)); if (!TM.length) TM = ['hero','veh'];
-let TCOMB = ls.get('jtb-tcomb') !== '0', TFROM = '';
+let TCOMB = ls.get('jtb-tcomb') !== '0', TFROM = ls.get('jtb-tfrom') || '';
 const tv = m => TM.reduce((s,k) => s + ((m && m[k]) || 0), 0);
 const tl = () => TM.map(k => TMET.find(t => t[0] === k)[1]).join(' + ');
 const tok = q => q && TM.every(k => k !== 'arena' || q.arena);
 function renderTrends(){
-  const from = (TFROM && dates.includes(TFROM) && TFROM < LATEST) ? TFROM : PREV, fMap = {}; (byDate[from]||[]).forEach(r => fMap[r.name] = r);
-  const fd = dates.find(d => byDate[d].some(r => tok(r))) || dates[0], firstMap = {}; (byDate[fd]||[]).forEach(r => firstMap[r.name] = r);
+  // "From" date: everything on this tab measures the change from that snapshot to the latest one.
+  // Defaults to the first snapshot that has the chosen measure, so the full history shows until a later date is picked.
+  const fd = dates.find(d => byDate[d].some(r => tok(r))) || dates[0];
+  const from = (TFROM && dates.includes(TFROM) && TFROM < LATEST) ? (TFROM < fd ? fd : TFROM) : fd, fMap = {}; (byDate[from]||[]).forEach(r => fMap[r.name] = r);
   const delta = map => latest.filter(m => tok(map[m.name])).map(m => ({ label: m.name, v: tv(m) - tv(map[m.name]), sub: pct(tv(m), tv(map[m.name])) })).sort((a,b) => b.v - a.v);
   const both = delta(fMap), up = both.filter(x => x.v > 0).slice(0, 10), down = both.filter(x => x.v < 0).slice(-10).reverse();
-  const since = delta(firstMap).slice(0, 10);
+  const fRows = (byDate[from]||[]).filter(r => tok(r)), nRows = latest.filter(r => tok(r));
+  const tFrom = sum(fRows, tv), tNow = sum(nRows, tv), stay = latest.filter(m => tok(m) && tok(fMap[m.name]));
+  const sFrom = sum(stay, m => tv(fMap[m.name])), sNow = sum(stay, tv);
+  const days = Math.round((new Date(LATEST) - new Date(from)) / 864e5);
   const joined = latest.filter(m => !fMap[m.name]), left = (byDate[from]||[]).filter(p => !latest.find(m => m.name === p.name));
-  const pts = dates.map(d => ({ d, rows: byDate[d].filter(r => TM.every(k => k !== 'arena' || r.arena)) })).filter(p => p.rows.length && (!TM.includes('arena') || p.rows.some(r => r.arena)));
+  const pts = dates.filter(d => d >= from).map(d => ({ d, rows: byDate[d].filter(r => TM.every(k => k !== 'arena' || r.arena)) })).filter(p => p.rows.length && (!TM.includes('arena') || p.rows.some(r => r.arena)));
   const cols = ['var(--s1)','var(--s2)','var(--s3, var(--info))','var(--good)','var(--warn)','var(--bad)','var(--accent)','var(--fg-2)'];
   const series = TCOMB || TM.length === 1 ? [{ name: tl(), vals: pts.map(p => sum(p.rows, tv)), col: cols[0] }] : TM.map((k,i) => ({ name: TMET.find(t=>t[0]===k)[1], vals: pts.map(p => sum(p.rows, r => r[k])), col: cols[i % cols.length] }));
   const lab = pts.map(p => dShort(p.d));
@@ -539,11 +545,17 @@ function renderTrends(){
       ${TMET.map(([k,l]) => `<button class="btn small" data-tm="${k}" aria-pressed="${TM.includes(k)}" style="${TM.includes(k)?'background:var(--accent);color:var(--bg);border-color:var(--accent)':''}">${l}</button>`).join('')}
       <button class="btn small" data-tpre="hero,veh">Hero + vehicle</button>
       <label class="count"><input type="checkbox" id="tcomb" ${TCOMB?'checked':''}> combine into one line</label>
-      <label class="count">Compare against <select id="tfrom">${dates.slice(0,-1).map(d => `<option value="${d}" ${d===from?'selected':''}>${dShort(d)}</option>`).join('')}</select></label></div>
+      <label class="count">From <select id="tfrom">${dates.slice(0,-1).filter(d => d >= fd).map(d => `<option value="${d}" ${d===from?'selected':''}>${dShort(d)}${d===fd?' (first)':''}</option>`).join('')}</select> to ${dShort(LATEST)}</label></div>
       ${TM.includes('arena') ? `<p class="count" style="margin:8px 0 0">Arena power is only recorded from ${dShort(dates.find(d => byDate[d].some(r => r.arena)) || LATEST)} on, so its history starts there.</p>` : ''}</div>
-    <div class="panel c8"><h3>Alliance ${esc(tl())} by snapshot</h3>${pts.length > 1 ? lineChart(series, lab, {label:'Alliance '+tl()+' by snapshot'}) : '<p class="count">Only one snapshot has this measure so far.</p>'}
+    <div class="panel c8"><h3>Alliance ${esc(tl())} · ${dShort(from)} to ${dShort(LATEST)}</h3>${pts.length > 1 ? lineChart(series, lab, {label:'Alliance '+tl()+' by snapshot'}) : '<p class="count">Only one snapshot has this measure so far.</p>'}
       <div class="legend">${series.map(s => `<span><i style="background:${s.col}"></i>${esc(s.name)}</span>`).join('')}</div></div>
-    <div class="panel c4"><h3>Since ${dShort(fd)} ${note}</h3>${since.length ? divergeBars(since, {label:'Top gainers since first snapshot'}) : '<p class="count">No overlap yet.</p>'}</div>
+    <div class="panel c4 tile"><h3>Total change since ${dShort(from)} ${note}</h3>
+      <div class="big" style="color:${tNow-tFrom<0?'var(--bad)':'var(--good)'}">${signed(tNow - tFrom)}</div>
+      <div class="delta"><b>${pct(tNow, tFrom)}</b> over ${days} day${days===1?'':'s'} · ${fmtM(tFrom)} → ${fmtM(tNow)}</div>
+      <div class="eyebrow" style="margin-top:14px">Same members (in both snapshots · ${stay.length})</div>
+      <div class="delta"><b>${signed(sNow - sFrom)}</b> ${pct(sNow, sFrom)} · avg ${signed((sNow - sFrom) / Math.max(1, stay.length))} each</div>
+      <div class="eyebrow" style="margin-top:14px">Roster turnover</div>
+      <div class="delta">${fRows.length} → ${nRows.length} members · joined ${joined.length}, left ${left.length} · net ${signed((tNow - tFrom) - (sNow - sFrom))}</div></div>
     <div class="panel c6"><h3>Biggest gains since ${dShort(from)} ${note}</h3>${up.length ? divergeBars(up, {label:'Top gainers'}) : '<p class="count">No gains recorded.</p>'}</div>
     <div class="panel c6"><h3>Declines since ${dShort(from)} ${note}</h3>${down.length ? divergeBars(down, {label:'Top decliners'}) : '<p style="color:var(--fg-3)">Nobody lost power on this measure.</p>'}</div>
     <div class="panel c6"><h3>Joined since ${dShort(from)} · ${joined.length}</h3><div class="mini">${joined.map(m => `<span data-member="${esc(m.name)}" style="cursor:pointer">${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
@@ -553,7 +565,7 @@ function renderTrends(){
   v.querySelectorAll('[data-tm]').forEach(b => b.onclick = () => { const k = b.dataset.tm; TM = TM.includes(k) ? (TM.length > 1 ? TM.filter(x => x !== k) : TM) : TMET.map(t=>t[0]).filter(x => TM.includes(x) || x === k); save(); });
   v.querySelectorAll('[data-tpre]').forEach(b => b.onclick = () => { TM = b.dataset.tpre.split(','); save(); });
   $('#tcomb').onchange = e => { TCOMB = e.target.checked; ls.set('jtb-tcomb', TCOMB ? '1' : '0'); renderTrends(); };
-  $('#tfrom').onchange = e => { TFROM = e.target.value; renderTrends(); };
+  $('#tfrom').onchange = e => { TFROM = e.target.value; ls.set('jtb-tfrom', TFROM); renderTrends(); };
 }
 
 // ---------- Champion Duel + other alliances (snapshot data; refreshed with the weekly capture)
