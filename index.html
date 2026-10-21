@@ -206,6 +206,36 @@ tbody tr { cursor: pointer; }
 .btn.danger { border-color: var(--bad); color: var(--bad); }
 .btn.danger.solid { background: var(--bad); color: #fff; }
 .btn:disabled { opacity: .5; cursor: default; }
+.subnav { display: inline-flex; gap: 0; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+.subnav button { background: var(--panel); border: 0; padding: 6px 14px; font-family: var(--display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; color: var(--fg-2); cursor: pointer; }
+.subnav button[aria-selected=true] { background: var(--accent); color: var(--accent-ink); }
+.btn.solid { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.lockbox { display: block; }
+.lockbox .lhead { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.lockbox input[type=date] { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 8px; color: var(--fg); font-family: var(--body); }
+.lteam { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.lteam h4, .evb h4 { font-family: var(--display); text-transform: uppercase; letter-spacing: .08em; font-size: 14px; margin: 0 0 8px; }
+.lfields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.lfields input, .lfields select, .lgrid input.pts { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 8px; font-family: var(--body); color: var(--fg); min-width: 0; width: 100%; text-transform: none; letter-spacing: 0; }
+.lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 14px; margin-top: 6px; }
+.lrow { display: grid; grid-template-columns: 1fr auto 64px; gap: 6px; align-items: center; font-size: 13px; padding: 2px 0; border-bottom: 1px dashed var(--line); }
+.lgrid.ro .lrow { grid-template-columns: 1fr auto auto 56px; }
+.lrow .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrow .v { text-align: right; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.lgrid input.pts { padding: 2px 6px; font-size: 12px; text-align: right; }
+.pchip { border: 0; border-radius: 999px; padding: 1px 9px; font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; line-height: 18px; white-space: nowrap; }
+span.pchip { cursor: default; }
+.pchip.good { background: var(--good); color: #fff; } .pchip.bad { background: var(--bad); color: #fff; } .pchip.idle { background: transparent; color: var(--fg-3); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.lfoot { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.dots { white-space: nowrap; } .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+.dot.good { background: var(--good); } .dot.bad { background: var(--bad); } .dot.idle { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.ev { border-top: 1px solid var(--line); padding: 8px 0; } .ev summary { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; cursor: pointer; list-style: none; }
+.ev summary::-webkit-details-marker { display: none; } .ev summary::before { content: "▸"; color: var(--fg-3); } .ev[open] summary::before { content: "▾"; }
+.res { font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .05em; padding: 1px 8px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-2); }
+.res.w { background: var(--good); color: #fff; box-shadow: none; } .res.l { background: var(--bad); color: #fff; box-shadow: none; }
+.evb { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 10px 0 4px 18px; }
+.wr { margin-bottom: 10px; }
+@media (max-width: 720px) { .lfields { grid-template-columns: 1fr 1fr; } .evb { grid-template-columns: 1fr; padding-left: 0; } }
 .slot .n.pending::after { content: "⟳"; color: var(--warn); margin-left: 4px; font-size: 11px; }
 .qedit { background: none; border: 0; color: var(--fg-3); cursor: pointer; padding: 0 2px; font-size: 12px; }
 .qedit:hover { color: var(--accent); }
@@ -493,9 +523,10 @@ function canyonSummary(){
 }
 function renderCanyon(){
   const cs = canyonSummary(), M = D.meta;
-  const votes = { '18:00 only': 0, '23:00 only': 0, 'Both': 0, 'N/A': 0, 'No vote': 0 };
+  const s1o = sessOf('T1') + ' only', s2o = sessOf('T2') + ' only';   // which session each team plays comes from Canyon Teams C4 / C6
+  const votes = { [s1o]: 0, [s2o]: 0, 'Both': 0, 'N/A': 0, 'No vote': 0 };
   D.canyon.forEach(c => { const a = c.avail === '' ? 'No vote' : c.avail; votes[a in votes ? a : 'No vote']++; });
-  const vcol = { '18:00 only': 'var(--t1)', '23:00 only': 'var(--t2)', 'Both': 'var(--s3)', 'N/A': 'var(--fg-3)', 'No vote': 'var(--line-strong)' };
+  const vcol = { [s1o]: 'var(--t1)', [s2o]: 'var(--t2)', 'Both': 'var(--s3)', 'N/A': 'var(--fg-3)', 'No vote': 'var(--line-strong)' };
   const total = D.canyon.length;
   const noVote = D.canyon.filter(c => c.avail === '').map(c => ({ ...c, hv: pw(latest.find(m => m.name === c.name)) })).sort((a,b) => b.hv - a.hv);
   const overrides = D.canyon.filter(c => c.manual);
@@ -510,22 +541,23 @@ function renderCanyon(){
   const gmax = Math.max(cs.s1, cs.s2) || 1;
   $('#view-canyon').innerHTML = `<div class="grid">
     <div class="panel c12"><h3>Starters balance <span class="note">${MLONG} of the top ${M.starters} starters per team; subs never count</span></h3>
-      <div class="gap"><div><div class="mini" style="justify-content:space-between"><b style="color:var(--t1)">Team 1</b><span>${fmt(cs.s1)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s1/gmax*100).toFixed(1)}%;background:var(--t1)"></i></div></div>
+      <div class="gap"><div><div class="mini" style="justify-content:space-between"><b style="color:var(--t1)">${teamName('T1')}</b><span>${fmt(cs.s1)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s1/gmax*100).toFixed(1)}%;background:var(--t1)"></i></div></div>
         <div style="text-align:center"><div class="big" style="font-family:var(--display);font-size:28px;font-weight:700;color:${cs.gapPct!=null&&cs.gapPct<5?'var(--good)':'var(--bad)'}">${cs.gapPct==null?'—':cs.gapPct.toFixed(1)+'%'}</div><div class="eyebrow">${cs.strong} ahead by ${fmt(Math.abs(cs.gap))}</div></div>
-        <div><div class="mini" style="justify-content:space-between"><b style="color:var(--t2)">Team 2</b><span>${fmt(cs.s2)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s2/gmax*100).toFixed(1)}%;background:var(--t2)"></i></div></div></div>
+        <div><div class="mini" style="justify-content:space-between"><b style="color:var(--t2)">${teamName('T2')}</b><span>${fmt(cs.s2)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s2/gmax*100).toFixed(1)}%;background:var(--t2)"></i></div></div></div>
       <div class="eyebrow" style="margin-top:14px">Availability · ${total} members</div>
       <div class="avail">${Object.entries(votes).filter(([k,v])=>v).map(([k,v]) => `<i style="width:${(v/total*100).toFixed(2)}%;background:${vcol[k]}" data-tip="${k}|${v} members (${(v/total*100).toFixed(0)}%)"></i>`).join('')}</div>
       <div class="legend">${Object.entries(votes).map(([k,v]) => `<span><i style="background:${vcol[k]}"></i>${k} · ${v}</span>`).join('')}${overrides.length?`<span style="margin-left:auto;color:var(--warn)">✎ ${overrides.length} manual override${overrides.length>1?'s':''}</span>`:''}</div>
+      ${canLock() ? `<div class="filters" style="margin:12px 0 0">${lockOpen ? '' : '<button class="btn small solid" id="lock-open">Lock in results…</button>'}<span style="font-size:12px;color:var(--fg-3)">${lastLockNote()}</span></div>${lockOpen ? lockForm() : ''}` : ''}
       ${canClear() ? `${clearOpen ? clearForm(total - votes['No vote'], overrides.length) : `<div class="filters" style="margin:12px 0 0"><button class="btn small danger" id="clear-open">Clear all votes…</button><span style="font-size:12px;color:var(--fg-3)">Start a new week's poll: everyone goes back to No vote.</span></div>`}` : ''}</div>
     ${teamCard('T1', 'Team 1', M.t1)}${teamCard('T2', 'Team 2', M.t2)}
-    <div class="panel c12"><h3>No vote yet · ${noVote.length} <span class="note">strongest first; each one voting 18:00 or Both would take a Team 1 starter spot</span></h3>
+    <div class="panel c12"><h3>No vote yet · ${noVote.length} <span class="note">strongest first; each one voting ${sessOf('T1')} or Both would take a Team 1 starter spot</span></h3>
       <div class="filters"><button class="btn small" id="copy-nudge">Copy names</button><button class="btn small" id="copy-nudge-msg">Copy poll reminder</button></div>
       <div class="nudge">${noVote.map(c => `<div><span data-member="${esc(c.name)}" style="cursor:pointer" class="${pending[c.name]?'pending':''}">${esc(c.name)}</span><span class="v">${fmtM(c.hv)}</span></div>`).join('')}</div></div>
   </div>`;
   $('#view-canyon').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const k = b.dataset.copy, T = cs.teams[k]; copy(`${k==='T1'?'TEAM 1':'TEAM 2'} (${k==='T1'?M.t1:M.t2})\nStarters:\n${T.filter(p=>p.starter).map((p,i)=>`${i+1}. ${p.name}`).join('\n')}\nSubstitutes:\n${T.filter(p=>!p.starter).map((p,i)=>`${i+1}. ${p.name}`).join('\n')}`, 'Lineup copied'); });
   $('#copy-nudge').onclick = () => copy(noVote.map(c => c.name).join(', '), 'Names copied');
-  wireClear();
-  $('#copy-nudge-msg').onclick = () => copy(`Canyon Clash poll: we still need a vote from ${noVote.length} members. Please pick 18:00, 23:00, Both or N/A so we can set the teams. Missing: ${noVote.map(c => c.name).join(', ')}`, 'Reminder copied');
+  wireClear(); wireLock();
+  $('#copy-nudge-msg').onclick = () => copy(`Canyon Clash poll: we still need a vote from ${noVote.length} members. Please pick ${sessOf('T1')} (Team 1), ${sessOf('T2')} (Team 2), Both or N/A so we can set the teams. Missing: ${noVote.map(c => c.name).join(', ')}`, 'Reminder copied');
 }
 
 // ---------- trends
@@ -536,7 +568,14 @@ let TCOMB = ls.get('jtb-tcomb') !== '0', TFROM = ls.get('jtb-tfrom') || '';
 const tv = m => TM.reduce((s,k) => s + ((m && m[k]) || 0), 0);
 const tl = () => TM.map(k => TMET.find(t => t[0] === k)[1]).join(' + ');
 const tok = q => q && TM.every(k => k !== 'arena' || q.arena);
+let TSUB = ls.get('jtb-tsub') === 'canyon' ? 'canyon' : 'power';
 function renderTrends(){
+  const nav = `<div class="subnav" role="tablist"><button data-tsub="power" aria-selected="${TSUB==='power'}">Power trends</button><button data-tsub="canyon" aria-selected="${TSUB==='canyon'}">Canyon trends</button></div>`;
+  if (TSUB === 'canyon') { const v = $('#view-trends'); v.innerHTML = nav + '<div id="ct-host"></div>'; renderCanyonTrends($('#ct-host')); wireTsub(); return; }
+  renderPowerTrends(); $('#view-trends').insertAdjacentHTML('afterbegin', nav); wireTsub();
+}
+function wireTsub(){ $('#view-trends').querySelectorAll('[data-tsub]').forEach(b => b.onclick = () => { TSUB = b.dataset.tsub; ls.set('jtb-tsub', TSUB); renderTrends(); sortable(); }); }
+function renderPowerTrends(){
   // "From" date: everything on this tab measures the change from that snapshot to the latest one.
   // Defaults to the first snapshot that has the chosen measure, so the full history shows until a later date is picked.
   const fd = dates.find(d => byDate[d].some(r => tok(r))) || dates[0];
@@ -707,6 +746,7 @@ function openMember(name){
       : '<p style="color:var(--fg-3)">Only one snapshot so far' + (BY_ARENA && ARENA_OK ? ' with arena power; hero + vehicle history is below.' : '.') + '</p>'}
     <dl class="kv">${rows.map(([k,v,d]) => `<dt>${k}</dt><dd>${v}${d==null?'':` <span class="${d>0?'d-up':d<0?'d-down':'d-flat'}" style="font-size:12px">${signed(d)}</span>`}</dd>`).join('')}
       <dt>Canyon vote</dt><dd>${esc(c.avail || 'no vote')}</dd><dt>Canyon slot</dt><dd>${esc(c.final || '—')}</dd>${c.t10?`<dt>T10</dt><dd>${esc(c.t10)}</dd>`:''}<dt>UID</dt><dd class="mono" style="font-size:12px">${esc(m.uid)}</dd></dl>
+    ${memberCanyon(name)}
     ${(READONLY && !WEB) ? '' : `<div class="edit"><label>Availability<select id="ed-avail">${AVAIL_OPTIONS.map(o => `<option value="${o}" ${o===(c.avail||'')?'selected':''}>${o || 'No vote'}</option>`).join('')}</select></label>
       <label>Canyon slot<select id="ed-slot">${SLOT_OPTIONS.map(o => `<option value="${o}" ${(c.manual ? o===c.final : o==='auto')?'selected':''}>${o==='auto' ? 'Auto ('+(c.manual ? autoSlotOf(c) : (c.final||'not placed'))+')' : o}</option>`).join('')}</select></label>
       ${WEB ? `<label>Passcode<input id="ed-code" type="password" autocomplete="off" placeholder="member or officer code" value="${esc(code)}"></label><label>Your name<input id="ed-by" type="text" autocomplete="off" maxlength="40" placeholder="who is changing this" value="${esc(who)}"></label>` : ''}
@@ -737,6 +777,246 @@ document.addEventListener('click', e => {
 });
 
 // ---------- editing: apply locally, preview the new split, queue the change for the sheet
+
+// ---------- Canyon Clash ledger: who was rostered on each Friday, who showed, and how each team did.
+// Stored by the board API (GET/POST /ledger) and mirrored into the tracker's Canyon Ledger tabs. Players are keyed by
+// in-game UID so a rename keeps one history; the newest name on the roster is the one shown.
+const LEDGER_API = API_URL || 'https://jtb293-board.thebadnewsbard.workers.dev';
+let LEDGER = { rev: 0, events: [] }, ledgerState = 'loading';
+const STATUS = { show: ['Show', 'good'], 'no-show': ['No-show', 'bad'], played: ['Played', 'good'], 'not-needed': ['Not needed', 'idle'] };
+const sessOf = t => sessKey(t === 'T1' ? D.meta.t1 : D.meta.t2);          // "23:00" / "18:00"
+const teamName = t => (t === 'T1' ? 'Team 1' : 'Team 2') + ' · ' + sessOf(t);
+// In-game UID when the capture has one (newest snapshot first, then older ones); the name otherwise. Renames of members
+// without a UID are carried into the ledger by POST /ledger/rename (the weekly run calls it when it applies a rename).
+const uidOf = name => { const h = (hist[name] || []).slice().reverse().find(x => x.uid); return h ? String(h.uid) : ''; };
+const nameByUid = () => { const o = {}; latest.forEach(m => { const u = uidOf(m.name); if (u) o[u] = m.name; }); return o; };
+const pkey = p => p.uid ? String(p.uid) : 'name:' + p.name;
+function parsePower(v){
+  const s = String(v ?? '').trim().replace(/,/g, '').replace(/\s/g, ''); if (!s) return null;
+  const m = s.match(/^(\d*\.?\d+)([KMBG])?$/i); if (!m) return NaN;
+  return +m[1] * ({ k: 1e3, m: 1e6, b: 1e9, g: 1e9 }[(m[2] || '').toLowerCase()] || 1);
+}
+function lastFriday(){ const d = new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate() - ((d.getDay() + 2) % 7)); return d.toISOString().slice(0,10); }
+async function loadLedger(){
+  if (!LEDGER_API) { ledgerState = 'off'; return; }
+  try { const r = await fetch(LEDGER_API + '/ledger', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); LEDGER = await r.json(); LEDGER.events = LEDGER.events || []; ledgerState = 'ok'; }
+  catch (e) { ledgerState = 'offline'; }
+  if ((current === 'trends' || current === 'canyon') && !lockOpen) renderAll();
+}
+async function postLedger(path, body, k){
+  const r = await fetch(LEDGER_API + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Code': k }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(r.status === 401 ? 'That passcode is not recognised' : r.status === 403 ? 'The ledger needs the officer code' : (j.error || ('HTTP ' + r.status)));
+  return j;
+}
+
+// ---- the Lock in panel (Canyon tab). One lock after the match: roster + chips + results in one go.
+// Source: the current lineup, or - when that Friday is already in the ledger - the roster that was locked (edit mode).
+let lockOpen = false, lockBusy = false, LK = null;
+function lockDraftFor(date){
+  const ev = LEDGER.events.find(e => e.date === date);
+  if (ev) return { date, edit: true, teams: Object.fromEntries(['T1','T2'].map(t => [t, { ...(ev.teams.find(x => x.team === t) || { team: t }) }])), players: ev.players.map(p => ({ ...p })), measure: ev.measure };
+  const cs = canyonSummary(), players = [];
+  ['T1','T2'].forEach(t => cs.teams[t].forEach(p => players.push({ uid: uidOf(p.name), name: p.name, team: t, role: p.starter ? 'Starter' : 'Sub', status: p.starter ? 'show' : 'not-needed', points: null })));
+  const teams = {}; ['T1','T2'].forEach(t => { teams[t] = { team: t, session: sessOf(t), oppServer: '', oppAlliance: '', oppPower: null, score: null, oppScore: null, result: '', ourPower: t === 'T1' ? cs.s1 : cs.s2, starters: cs.teams[t].filter(p => p.starter).length }; });
+  return { date, edit: false, teams, players, measure: D.meta.by };
+}
+function openLock(date){
+  let saved = null; try { saved = JSON.parse(ls.get('jtb-lockdraft') || 'null'); } catch (e) {}
+  date = date || (saved && saved.date) || lastFriday();
+  LK = saved && saved.date === date && Array.isArray(saved.players) ? saved : lockDraftFor(date);
+  lockOpen = true;
+}
+const saveDraft = () => ls.set('jtb-lockdraft', JSON.stringify(LK));
+function lockForm(){
+  const k = LK, ev = LEDGER.events.find(e => e.date === k.date);
+  const fri = new Date(k.date + 'T12:00:00').getDay() === 5;
+  const chip = p => { const [lab, cls] = STATUS[p.status] || ['?', 'idle']; return `<button class="pchip ${cls}" data-lk="${esc(pkey(p))}" title="Click to switch">${lab}</button>`; };
+  const teamBlock = t => {
+    const T = k.teams[t] || { team: t }, ps = k.players.filter(p => p.team === t); if (!ps.length && !(T.oppServer || T.score != null)) return '';
+    const st = ps.filter(p => p.role === 'Starter'), sb = ps.filter(p => p.role === 'Sub');
+    const row = p => `<div class="lrow"><span class="n">${esc(p.name)}</span>${chip(p)}<input class="pts" data-pts="${esc(pkey(p))}" inputmode="numeric" placeholder="pts" value="${p.points ?? ''}" aria-label="${esc(p.name)} points"></div>`;
+    const sess = T.session || sessOf(t);
+    return `<div class="lteam ${t.toLowerCase()}"><h4 style="color:var(--${t.toLowerCase()})">${t === 'T1' ? 'Team 1' : 'Team 2'} · ${esc(sess)} <span class="note">${st.filter(p=>p.status==='show').length}/${st.length} starters showed · ${sb.filter(p=>p.status==='played').length} subs played</span></h4>
+      <div class="lfields">
+        <label>Opponent server<input data-tf="${t}:oppServer" value="${esc(T.oppServer || '')}" placeholder="e.g. 301" maxlength="10"></label>
+        <label>Opponent alliance<input data-tf="${t}:oppAlliance" value="${esc(T.oppAlliance || '')}" placeholder="tag or name" maxlength="40"></label>
+        <label>Opponent total power<input data-tf="${t}:oppPower" value="${T.oppPower != null ? fmtM(T.oppPower) : ''}" placeholder="e.g. 7.2B" maxlength="20"></label>
+        <label>Our score<input data-tf="${t}:score" inputmode="numeric" value="${T.score ?? ''}" maxlength="12"></label>
+        <label>Their score<input data-tf="${t}:oppScore" inputmode="numeric" value="${T.oppScore ?? ''}" maxlength="12"></label>
+        <label>Result<select data-tf="${t}:result"><option value="">—</option><option value="W" ${T.result==='W'?'selected':''}>Win</option><option value="L" ${T.result==='L'?'selected':''}>Loss</option></select></label>
+      </div>
+      <div class="eyebrow" style="margin-top:8px">Starters · click a chip to switch Show / No-show</div><div class="lgrid">${st.map(row).join('') || '<span class="v">none</span>'}</div>
+      <div class="eyebrow" style="margin-top:8px">Subs · Not needed unless they played</div><div class="lgrid">${sb.map(row).join('') || '<span class="v">none</span>'}</div></div>`;
+  };
+  const n = k.players.length;
+  return `<div class="clearbox lockbox" id="lockbox">
+    <div class="lhead"><label>Canyon date<input type="date" id="lk-date" value="${k.date}"></label>
+      <span class="note" style="font-size:12px">${fri ? '' : '<b style="color:var(--warn)">Not a Friday.</b> '}${k.edit ? `Editing the roster locked ${ev && ev.lockedAt ? 'on ' + dShort(ev.lockedAt.slice(0,10)) : ''}${ev && ev.lockedBy ? ' by ' + esc(ev.lockedBy) : ''}. <button class="btn small" id="lk-rebuild">Use the current lineup instead</button>` : `Roster = today's lineup (${n} players). Opponent, scores and points are optional.`}</span></div>
+    ${teamBlock('T1')}${teamBlock('T2')}
+    <div class="lfoot">${WEB || LEDGER_API ? `<label>Officer passcode<input id="lk-code" type="password" autocomplete="off" value="${esc(role === 'officer' ? code : '')}" placeholder="officer code"></label><label>Your name<input id="lk-by" type="text" maxlength="40" value="${esc(who)}" placeholder="who is locking"></label>` : ''}
+      <button class="btn solid" id="lk-go" ${lockBusy || !n ? 'disabled' : ''}>${lockBusy ? 'Saving…' : (k.edit ? 'Save changes' : 'Lock in ' + n + ' players')}</button>
+      <button class="btn" id="lk-cancel">Close</button>${k.edit ? '<button class="btn danger small" id="lk-del" style="margin-left:auto">Delete this Canyon</button>' : ''}
+      <div class="hint">Locking writes this Friday to the ledger (Trends → Canyon) and the tracker's Canyon Ledger tabs. Locking the same date again replaces it, so mistakes can be fixed. Your chips are kept on this device until you lock.</div></div></div>`;
+}
+let laterT = null; const later = () => { clearTimeout(laterT); laterT = setTimeout(renderAll, 0); };
+function wireLock(){
+  const v = $('#view-canyon'), o = $('#lock-open');
+  if (o) o.onclick = () => { openLock(); renderAll(); $('#lockbox') && $('#lockbox').scrollIntoView({ block: 'nearest' }); };
+  if (!lockOpen || !$('#lockbox')) return;
+  $('#lk-cancel').onclick = () => { lockOpen = false; renderAll(); };
+  $('#lk-date').onchange = e => { if (!e.target.value) return; LK = lockDraftFor(e.target.value); saveDraft(); later(); };
+  const rb = $('#lk-rebuild'); if (rb) rb.onclick = () => { const d = LK.date, keep = LK; LK = lockDraftFor('0000-00-00'); LK.date = d; ['T1','T2'].forEach(t => { const o = keep.teams[t] || {}; Object.assign(LK.teams[t], { oppServer: o.oppServer, oppAlliance: o.oppAlliance, oppPower: o.oppPower, score: o.score, oppScore: o.oppScore, result: o.result }); }); LK.edit = true; saveDraft(); renderAll(); };
+  v.querySelectorAll('[data-lk]').forEach(b => b.onclick = () => { const p = LK.players.find(x => pkey(x) === b.dataset.lk); if (!p) return;
+    p.status = p.role === 'Starter' ? (p.status === 'show' ? 'no-show' : 'show') : (p.status === 'played' ? 'not-needed' : 'played'); saveDraft(); renderAll(); });
+  v.querySelectorAll('[data-pts]').forEach(i => i.onchange = () => { const p = LK.players.find(x => pkey(x) === i.dataset.pts); if (p) { p.points = i.value.trim() === '' ? null : Number(i.value.replace(/,/g, '')); saveDraft(); } });
+  v.querySelectorAll('[data-tf]').forEach(i => i.onchange = () => { const [t, f] = i.dataset.tf.split(':'), T = LK.teams[t] ||= { team: t, session: sessOf(t) };
+    let val = i.value.trim();
+    if (f === 'oppPower') { const n = parsePower(val); if (Number.isNaN(n)) { toast('Power like 7.2B, 7200M or 7,200,000,000'); return; } val = n; }
+    else if (f === 'score' || f === 'oppScore') val = val === '' ? null : Number(val.replace(/,/g, ''));
+    T[f] = val;
+    if ((f === 'score' || f === 'oppScore') && T.score != null && T.oppScore != null && !T._manual && T.score !== T.oppScore) T.result = T.score > T.oppScore ? 'W' : 'L';
+    if (f === 'result') T._manual = true;
+    saveDraft(); later(); });
+  $('#lk-go').onclick = async () => {
+    const k = ($('#lk-code') && $('#lk-code').value || code || '').trim(), by = ($('#lk-by') && $('#lk-by').value || who || '').trim();
+    if (!k) { toast('Enter the officer passcode'); return; }
+    if (by) { who = by; ls.set('jtb-who', who); }
+    const teams = ['T1','T2'].map(t => LK.teams[t]).filter(T => T && LK.players.some(p => p.team === T.team)).map(({ _manual, ...T }) => T);
+    const event = { date: LK.date, measure: LK.measure || D.meta.by, teams, players: LK.players };
+    lockBusy = true; renderAll();
+    try { const j = await postLedger('/ledger', { event, by: who || undefined }, k);
+      code = k; ls.set('jtb-code', code); role = 'officer'; ls.set('jtb-lockdraft', ''); lockOpen = false; lockBusy = false;
+      toast((LK.edit ? 'Saved ' : 'Locked in ') + dShort(LK.date) + ' · ' + event.players.length + ' players'); await loadLedger(); renderAll(); }
+    catch (e) { lockBusy = false; toast(String(e.message || e)); renderAll(); }
+  };
+  const del = $('#lk-del'); if (del) del.onclick = async () => {
+    const k = ($('#lk-code') && $('#lk-code').value || '').trim(); if (!k) { toast('Enter the officer passcode'); return; }
+    if (!confirm('Delete the ' + dLong(LK.date) + ' Canyon from the ledger?')) return;
+    try { await postLedger('/ledger/delete', { date: LK.date, by: who || undefined }, k); ls.set('jtb-lockdraft', ''); lockOpen = false; toast('Deleted ' + dShort(LK.date)); await loadLedger(); renderAll(); }
+    catch (e) { toast(String(e.message || e)); }
+  };
+}
+
+// ---- analytics. A "match" is one team's game on one Friday; each team has its own opponent.
+// Played = a starter who showed or a sub who played. No-show rate = no-shows / times started (subs can't no-show).
+// Win/loss counts only matches the player played; "not needed" subs and no-shows get no result.
+function ledgerMatches(evs){
+  const out = [];
+  evs.forEach(e => e.teams.forEach(T => { const ps = e.players.filter(p => p.team === T.team); if (!ps.length) return;
+    const st = ps.filter(p => p.role === 'Starter');
+    out.push({ date: e.date, team: T.team, session: T.session || '?', T, ps, starters: st.length, showed: st.filter(p => p.status === 'show').length, noShows: st.filter(p => p.status === 'no-show'), subsPlayed: ps.filter(p => p.role === 'Sub' && p.status === 'played') }); }));
+  return out;
+}
+function playerStats(matches, roleF){
+  const by = {}, cur = nameByUid();
+  matches.forEach(m => m.ps.forEach(p => { if (roleF && p.role !== roleF) return;
+    const k = pkey(p), s = by[k] ||= { key: k, uid: p.uid, name: cur[p.uid] || p.name, names: new Set(), rostered: 0, starter: 0, sub: 0, played: 0, noShow: 0, notNeeded: 0, w: 0, l: 0, pts: [], hist: [] };
+    if (!cur[p.uid]) s.name = p.name;                                   // no UID on the roster: newest locked name
+    s.names.add(p.name); s.rostered++; p.role === 'Starter' ? s.starter++ : s.sub++;
+    const played = p.status === 'show' || p.status === 'played';
+    if (played) { s.played++; if (m.T.result === 'W') s.w++; else if (m.T.result === 'L') s.l++; }
+    if (p.status === 'no-show') s.noShow++; if (p.status === 'not-needed') s.notNeeded++;
+    if (p.points != null) s.pts.push(p.points);
+    s.hist.push({ date: m.date, session: m.session, role: p.role, status: p.status, result: played ? m.T.result : '', points: p.points });
+  }));
+  const curNames = new Set(latest.map(m => m.name));
+  return Object.values(by).map(s => ({ ...s, current: s.uid ? !!cur[s.uid] : curNames.has(s.name), noShowRate: s.starter ? s.noShow / s.starter : null, winRate: (s.w + s.l) ? s.w / (s.w + s.l) : null, avgPts: s.pts.length ? sum(s.pts, x => x) / s.pts.length : null, hist: s.hist.sort((a,b) => a.date < b.date ? -1 : 1) }));
+}
+const rate = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+const pchip = h => { const [lab, cls] = STATUS[h.status] || ['?','idle']; return `<i class="dot ${cls}" data-tip="${dShort(h.date)} · ${esc(h.session)}|${h.role} · ${lab}${h.result ? ' · ' + (h.result === 'W' ? 'won' : 'lost') : ''}${h.points != null ? ' · ' + h.points + ' pts' : ''}"></i>`; };
+let CT = { sess: ls.get('jtb-ctsess') || 'all', range: ls.get('jtb-ctrange') || 'all', role: ls.get('jtb-ctrole') || 'all', who: ls.get('jtb-ctwho') || 'current' };
+function resultsChart(matches, sessions, evDates){
+  const W = chartW(), L = narrow() ? 48 : 60, R = 10, rowH = 30, H = 20 + sessions.length * rowH + 22, cw = (W - L - R) / Math.max(1, evDates.length);
+  let g = '';
+  sessions.forEach((s, i) => { const y = 20 + i * rowH; g += `<text class="lbl" x="${L-8}" y="${y+19}" text-anchor="end">${esc(s)}</text>`;
+    evDates.forEach((d, j) => { const m = matches.find(x => x.date === d && x.session === s), x = L + j * cw + 2, w = Math.max(4, cw - 4);
+      if (!m) { g += `<rect x="${x.toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="22" rx="3" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>`; return; }
+      const col = m.T.result === 'W' ? 'var(--good)' : m.T.result === 'L' ? 'var(--bad)' : 'var(--line-strong)';
+      const tipTxt = `${dShort(d)} · ${s}|${m.T.result === 'W' ? 'Win' : m.T.result === 'L' ? 'Loss' : 'No result yet'}${m.T.score != null ? ' ' + m.T.score + '–' + (m.T.oppScore ?? '?') : ''}${m.T.oppAlliance || m.T.oppServer ? ' vs ' + (m.T.oppAlliance || '') + (m.T.oppServer ? ' #' + m.T.oppServer : '') : ''} · ${m.showed}/${m.starters} starters showed`;
+      g += `<rect x="${x.toFixed(1)}" y="${y+4}" width="${w.toFixed(1)}" height="22" rx="3" fill="${col}" data-tip="${esc(tipTxt)}"/>`;
+      if (cw > 26) g += `<text x="${(x + w/2).toFixed(1)}" y="${y+19}" text-anchor="middle" style="fill:#fff;font-weight:700;font-size:11px;pointer-events:none">${m.T.result || '·'}</text>`; }); });
+  const every = Math.ceil(evDates.length / (narrow() ? 5 : 10));
+  evDates.forEach((d, j) => { if (j % every === 0 || j === evDates.length - 1) g += `<text x="${(L + j*cw + cw/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${dShort(d)}</text>`; });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Canyon results by Friday and session">${g}</svg>`;
+}
+function pctChart(series, labels, opts={}){   // 0-100% lines
+  const W = chartW(), H = narrow() ? 170 : 190, L = 40, R = 14, T = 12, B = 28, x = i => L + (labels.length > 1 ? i*(W-L-R)/(labels.length-1) : (W-L-R)/2), y = v => T + (H-T-B) * (1 - v);
+  let g = '';
+  [0, .25, .5, .75, 1].forEach(v => { g += `<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v*100}%</text>`; });
+  const every = Math.ceil(labels.length / (narrow() ? 5 : 10));
+  labels.forEach((lb, i) => { if (i % every === 0 || i === labels.length-1) g += `<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${esc(lb)}</text>`; });
+  series.forEach(s => { const pts = s.vals.map((v,i) => v == null ? null : [x(i), y(v)]); let d = '', pen = false;
+    pts.forEach(p => { if (!p) { pen = false; return; } d += (pen ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ' '; pen = true; });
+    g += `<path d="${d}" fill="none" stroke="${s.col}" stroke-width="2" stroke-linejoin="round"/>`;
+    pts.forEach((p,i) => { if (p) g += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${s.col}" stroke="var(--panel)" stroke-width="2" data-tip="${esc(s.name)}|${esc(labels[i])}: ${Math.round(s.vals[i]*100)}%${s.sub ? ' · ' + esc(s.sub[i]) : ''}"/>`; }); });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||'')}">${g}</svg>`;
+}
+function renderCanyonTrends(host){
+  const all = LEDGER.events.slice().sort((a,b) => a.date < b.date ? -1 : 1);
+  const head = `<div class="panel c12"><div class="filters"><h3 style="margin:0">Canyon Clash ledger <span class="note">${all.length} Friday${all.length===1?'':'s'} locked in${LEDGER.updated ? ' · updated ' + dShort(LEDGER.updated.slice(0,10)) : ''}</span></h3>`;
+  if (!all.length) { host.innerHTML = `<div class="grid">${head}</div><p class="count" style="margin:8px 0 0">${ledgerState === 'loading' ? 'Loading the ledger…' : ledgerState === 'offline' ? 'Could not reach the board API for the ledger. Try again in a moment.' : 'No Canyon locked in yet. After Friday\'s Canyon, an officer opens the Canyon tab, sets each player\'s Show / No-show chip and presses <b>Lock in results…</b>. The record, attendance and player stats build up here from then on.'}</p></div></div>`; return; }
+  const sessions = [...new Set(all.flatMap(e => e.teams.map(t => t.session)).filter(Boolean))].sort((a,b) => b.localeCompare(a));
+  const n = CT.range === 'all' ? all.length : Number(CT.range), evs = all.slice(-n), evDates = evs.map(e => e.date);
+  const M = ledgerMatches(evs).filter(m => CT.sess === 'all' || m.session === CT.sess);
+  const rec = ms => { const w = ms.filter(m => m.T.result === 'W').length, l = ms.filter(m => m.T.result === 'L').length; return { w, l, txt: w + '–' + l, wr: (w + l) ? w / (w + l) : null }; };
+  const R = rec(M), st = sum(M, m => m.starters), sh = sum(M, m => m.showed), ns = st - sh;
+  let P = playerStats(M, CT.role === 'all' ? null : CT.role); if (CT.who === 'current') P = P.filter(p => p.current);
+  P.sort((a,b) => b.rostered - a.rostered || b.played - a.played || a.name.localeCompare(b.name));
+  const tile = (label, big, sub) => `<div class="panel tile c3"><div class="eyebrow">${label}</div><div class="big">${big}</div><div class="delta">${sub}</div></div>`;
+  const bySess = sessions.map(s => ({ s, ...rec(M.filter(m => m.session === s)) }));
+  // attendance + win rate per Friday
+  const att = evDates.map(d => { const ms = M.filter(m => m.date === d), a = sum(ms, m => m.starters); return a ? sum(ms, m => m.showed) / a : null; });
+  const attSub = evDates.map(d => { const ms = M.filter(m => m.date === d); return sum(ms, m => m.showed) + '/' + sum(ms, m => m.starters) + ' starters'; });
+  // power vs opponent (only matches where both are known and on comparable terms)
+  const pv = M.filter(m => m.T.oppPower && m.T.ourPower && m.T.result);
+  const stronger = pv.filter(m => m.T.ourPower >= m.T.oppPower), weaker = pv.filter(m => m.T.ourPower < m.T.oppPower);
+  const noShowTop = P.filter(p => p.noShow).sort((a,b) => b.noShow - a.noShow || b.noShowRate - a.noShowRate).slice(0, 8);
+  const sel = (id, val, opts) => `<select id="${id}">${opts.map(([v,l]) => `<option value="${v}" ${String(val)===String(v)?'selected':''}>${l}</option>`).join('')}</select>`;
+  host.innerHTML = `<div class="grid">${head}
+      ${sel('ct-sess', CT.sess, [['all','Both teams'], ...sessions.map(s => [s, s + ' team'])])}
+      ${sel('ct-range', CT.range, [['all','All Fridays'], ['4','Last 4'], ['8','Last 8'], ['12','Last 12']])}
+      ${sel('ct-role', CT.role, [['all','Starters + subs'], ['Starter','Starters only'], ['Sub','Subs only']])}
+      ${sel('ct-who', CT.who, [['current','Current members'], ['all','Include members who left']])}
+      <span class="count">${evs.length} Friday${evs.length===1?'':'s'} · ${M.length} match${M.length===1?'':'es'} (each team plays its own opponent)</span></div></div>
+    ${tile('Canyons played', evs.length, `${M.length} team matches · since ${dShort(evDates[0])}`)}
+    ${tile('Record', R.txt, R.wr == null ? 'no results entered yet' : `<b>${Math.round(R.wr*100)}%</b> win rate${bySess.length > 1 && CT.sess === 'all' ? ' · ' + bySess.map(b => `${esc(b.s)} ${b.txt}`).join(' · ') : ''}`)}
+    ${tile('Starter attendance', rate(sh, st), `${sh} of ${st} starter slots showed`)}
+    ${tile('No-shows', ns, `${rate(ns, st)} no-show rate · ${sum(M, m => m.subsPlayed.length)} sub fill-ins`)}
+    <div class="panel c8"><h3>Results by Friday <span class="note">green win · red loss · grey no result yet · hover for score and opponent</span></h3>${resultsChart(M, CT.sess === 'all' ? sessions : [CT.sess], evDates)}</div>
+    <div class="panel c4"><h3>Win rate by team</h3>${bySess.filter(b => CT.sess === 'all' || b.s === CT.sess).map(b => `<div class="wr"><div class="mini" style="justify-content:space-between"><b>${esc(b.s)} team</b><span>${b.txt}${b.wr == null ? '' : ' · ' + Math.round(b.wr*100) + '%'}</span></div><div class="gapbar"><i style="left:0;width:${((b.wr||0)*100).toFixed(1)}%;background:var(--good)"></i></div></div>`).join('')}
+      <div class="eyebrow" style="margin-top:14px">Our starters vs opponent power</div>
+      <div class="delta" style="font-size:13px">${pv.length ? `Stronger on paper: <b>${rec(stronger).txt}</b> · weaker: <b>${rec(weaker).txt}</b><br><span class="count">${pv.length} matches with both powers. Ours is the starters' ${esc((evs[evs.length-1].measure || 'power').toLowerCase())} at lock; theirs is whatever total power was entered, so treat it as a rough guide.</span>` : '<span class="count">Enter the opponent\'s total power when locking to see how often the stronger side won.</span>'}</div></div>
+    <div class="panel c8"><h3>Starter attendance per Friday <span class="note">share of rostered starters who showed</span></h3>${evDates.length > 1 ? pctChart([{ name: 'Attendance', vals: att, col: 'var(--s1)', sub: attSub }], evDates.map(dShort), { label: 'Starter attendance by Friday' }) : `<p class="count">${rate(sh, st)} on ${dShort(evDates[0])}. The line starts with the second Friday.</p>`}</div>
+    <div class="panel c4"><h3>Most no-shows <span class="note">${CT.range === 'all' ? 'all Fridays' : 'last ' + CT.range}</span></h3>${noShowTop.length ? `<div class="mini" style="flex-direction:column;gap:4px">${noShowTop.map(p => `<div style="display:flex;justify-content:space-between;gap:8px"><span ${p.current ? `data-member="${esc(p.name)}" style="cursor:pointer"` : ''}>${esc(p.name)}</span><span class="d-down">${p.noShow} of ${p.starter} starts</span></div>`).join('')}</div>` : '<p class="count">Nobody missed a start.</p>'}</div>
+    <div class="panel c12"><h3>Players · ${P.length} <span class="note">played = started and showed, or a sub who played · no-show rate = no-shows ÷ starts · W–L only counts matches they played · click a header to sort</span></h3>
+      <div class="tablewrap"><table data-skey="ctp"><thead><tr><th class="l">Player</th><th>Rostered</th><th>Starter</th><th>Sub</th><th>Played</th><th>No-shows</th><th>No-show rate</th><th>Not needed</th><th>W–L</th><th>Win rate</th><th>Avg points</th><th class="l">Recent (newest right)</th></tr></thead>
+      <tbody>${P.map(p => `<tr${p.current ? '' : ' style="opacity:.6"'}><td class="l" data-v="${esc(p.name)}">${p.current ? `<span data-member="${esc(p.name)}" style="cursor:pointer">${esc(p.name)}</span>` : esc(p.name) + ' <span class="count">(left)</span>'}${p.names.size > 1 ? ` <span class="count" data-tip="Also locked as|${esc([...p.names].filter(x => x !== p.name).join(', '))}">↺</span>` : ''}</td>
+        <td>${p.rostered}</td><td>${p.starter}</td><td>${p.sub}</td><td>${p.played}</td><td>${p.noShow}</td><td data-v="${p.noShowRate == null ? '' : (p.noShowRate*100).toFixed(1)}">${p.noShowRate == null ? '—' : Math.round(p.noShowRate*100) + '%'}</td><td>${p.notNeeded}</td>
+        <td>${p.w}–${p.l}</td><td data-v="${p.winRate == null ? '' : (p.winRate*100).toFixed(1)}">${p.winRate == null ? '—' : Math.round(p.winRate*100) + '%'}</td><td>${p.avgPts == null ? '—' : Math.round(p.avgPts).toLocaleString('en-US')}</td>
+        <td class="l dots" data-v="${p.hist.length}">${p.hist.slice(-10).map(pchip).join('')}</td></tr>`).join('')}</tbody></table></div>
+      <div class="legend" style="margin-top:8px"><span><i style="background:var(--good)"></i>Showed / played</span><span><i style="background:var(--bad)"></i>No-show</span><span><i style="background:var(--line-strong)"></i>Sub, not needed</span></div></div>
+    <div class="panel c12"><h3>Fridays <span class="note">newest first · each team's opponent, result and roster${WEB || LEDGER_API ? ' · officers can edit a Friday' : ''}</span></h3>
+      ${evs.slice().reverse().map(e => { const ms = ledgerMatches([e]);
+        return `<details class="ev"${e.date === evDates[evDates.length-1] ? ' open' : ''}><summary><b>${dLong(e.date)}</b>${ms.map(m => `<span class="res ${m.T.result === 'W' ? 'w' : m.T.result === 'L' ? 'l' : ''}">${esc(m.session)} ${m.T.result === 'W' ? 'Win' : m.T.result === 'L' ? 'Loss' : '—'}${m.T.score != null ? ' ' + m.T.score.toLocaleString('en-US') + '–' + (m.T.oppScore != null ? m.T.oppScore.toLocaleString('en-US') : '?') : ''}</span>`).join('')}<span class="count">${sum(ms, m => m.showed)}/${sum(ms, m => m.starters)} starters showed</span>${LEDGER_API ? `<button class="btn small" data-edit-ev="${e.date}" style="margin-left:auto">Edit</button>` : ''}</summary>
+          <div class="evb">${ms.map(m => `<div><h4 style="color:var(--${m.team.toLowerCase()})">${m.team === 'T1' ? 'Team 1' : 'Team 2'} · ${esc(m.session)}</h4>
+            <dl class="kv"><dt>Opponent</dt><dd>${esc([m.T.oppAlliance, m.T.oppServer ? '#' + String(m.T.oppServer).replace(/^#/, '') : ''].filter(Boolean).join(' · ') || '—')}</dd><dt>Their power</dt><dd>${m.T.oppPower ? fmt(m.T.oppPower) : '—'}</dd><dt>Our starters</dt><dd>${m.T.ourPower ? fmt(m.T.ourPower) + ' <span class="count">' + esc((e.measure || '').toLowerCase()) + '</span>' : '—'}</dd><dt>Score</dt><dd>${m.T.score != null ? m.T.score.toLocaleString('en-US') : '—'} – ${m.T.oppScore != null ? m.T.oppScore.toLocaleString('en-US') : '—'}</dd></dl>
+            <div class="lgrid ro">${m.ps.slice().sort((a,b) => (a.role === b.role ? 0 : a.role === 'Starter' ? -1 : 1) || (b.points ?? -1) - (a.points ?? -1)).map(p => { const [lab, cls] = STATUS[p.status]; return `<div class="lrow"><span class="n">${esc(nameByUid()[p.uid] || p.name)}</span><span class="count">${p.role === 'Sub' ? 'sub' : ''}</span><span class="pchip ${cls}">${lab}</span><span class="v">${p.points != null ? p.points.toLocaleString('en-US') : ''}</span></div>`; }).join('')}</div></div>`).join('')}
+            <p class="count" style="grid-column:1/-1;margin:0">Locked ${e.lockedAt ? dShort(e.lockedAt.slice(0,10)) : ''}${e.lockedBy ? ' by ' + esc(e.lockedBy) : ''}${e.editedAt ? ' · edited ' + dShort(e.editedAt.slice(0,10)) + (e.editedBy ? ' by ' + esc(e.editedBy) : '') : ''}</p></div></details>`; }).join('')}</div>
+  </div>`;
+  const keep = (k, id, key) => { $(id).onchange = e => { CT[k] = e.target.value; ls.set(key, CT[k]); renderTrends(); }; };
+  keep('sess', '#ct-sess', 'jtb-ctsess'); keep('range', '#ct-range', 'jtb-ctrange'); keep('role', '#ct-role', 'jtb-ctrole'); keep('who', '#ct-who', 'jtb-ctwho');
+  host.querySelectorAll('[data-edit-ev]').forEach(b => b.onclick = e => { e.preventDefault(); ls.set('jtb-lockdraft', ''); LK = lockDraftFor(b.dataset.editEv); lockOpen = true; show('canyon'); $('#lockbox') && $('#lockbox').scrollIntoView({ block: 'start' }); });
+}
+function memberCanyon(name){
+  const uid = uidOf(name), M = ledgerMatches(LEDGER.events), s = playerStats(M).find(p => (uid && p.uid === uid) || p.name === name);
+  if (!s) return LEDGER.events.length ? '<div class="eyebrow" style="margin-top:14px">Canyon record</div><p class="count" style="margin:4px 0 0">Not on a locked Canyon roster yet.</p>' : '';
+  return `<div class="eyebrow" style="margin-top:14px">Canyon record · ${s.rostered} rostered</div>
+    <dl class="kv"><dt>Starter / sub</dt><dd>${s.starter} / ${s.sub}</dd><dt>Played</dt><dd>${s.played}</dd><dt>No-shows</dt><dd>${s.noShow}${s.noShowRate != null ? ' <span class="count">(' + Math.round(s.noShowRate*100) + '% of starts)</span>' : ''}</dd><dt>Not needed</dt><dd>${s.notNeeded}</dd><dt>W–L</dt><dd>${s.w}–${s.l}${s.winRate != null ? ' <span class="count">(' + Math.round(s.winRate*100) + '%)</span>' : ''}</dd>${s.avgPts != null ? `<dt>Avg points</dt><dd>${Math.round(s.avgPts).toLocaleString('en-US')}</dd>` : ''}<dt>Recent</dt><dd class="dots">${s.hist.slice(-10).map(pchip).join('')}</dd></dl>`;
+}
+
+const canLock = () => !!LEDGER_API && (WEB || !READONLY);
+function lastLockNote(){ const e = LEDGER.events[LEDGER.events.length - 1]; if (ledgerState !== 'ok') return 'After Friday\'s Canyon: mark who showed and record the results.'; return e ? `Last locked: ${dShort(e.date)} · ${e.players.length} players. Lock in after Friday's matches, then clear the votes for next week.` : 'After Friday\'s Canyon: mark who showed, enter the results and lock it into the ledger.'; }
 // ---------- clear all votes (new week's poll). Officers only on the website; the command board sends it through Drive.
 let clearOpen = false, clearBusy = false;
 const canClear = () => WEB || !READONLY;
@@ -879,7 +1159,8 @@ async function connect(){
   }, { refetchInterval: 45000 });
 }
 connect();
-window.__jtb = { get D(){ return D; }, recompute, applyEdit, canyonSummary };
+loadLedger(); setInterval(() => { if (!document.hidden && !lockOpen) loadLedger(); }, 120000);
+window.__jtb = { get D(){ return D; }, recompute, applyEdit, canyonSummary, get LEDGER(){ return LEDGER; }, loadLedger, playerStats, ledgerMatches };
 
 // ---------- utilities
 function copy(text, msg){

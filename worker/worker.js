@@ -26,6 +26,49 @@ const SLOTS = ['auto', 'T1 Starter', 'T1 Sub', 'T2 Starter', 'T2 Sub', 'Bench', 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,X-Code,X-Sync-Key', 'Access-Control-Max-Age': '86400' };
 const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...CORS, ...extra } });
 const safeEq = (a, b) => { a = String(a || ''); b = String(b || ''); if (a.length !== b.length || !a.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
+const LEDGER_TEAMS = ['T1', 'T2'], ROLE_STATUS = { Starter: ['show', 'no-show'], Sub: ['played', 'not-needed'] };
+const str = (v, n = 40) => v == null ? '' : String(v).trim().slice(0, n);
+const numOrNull = v => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/,/g, '')); return Number.isFinite(n) ? n : null; };
+// Validate one Canyon event; returns [event, error]. Unknown fields are dropped so the KV value stays small and predictable.
+function cleanEvent(e) {
+  if (!e || typeof e !== 'object') return [null, 'event required'];
+  const date = str(e.date, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return [null, 'date must be YYYY-MM-DD'];
+  const teams = [];
+  for (const t of Array.isArray(e.teams) ? e.teams : []) {
+    if (!LEDGER_TEAMS.includes(t.team)) return [null, 'bad team ' + t.team];
+    const result = str(t.result, 1).toUpperCase();
+    if (result && !['W', 'L', 'D'].includes(result)) return [null, 'result must be W, L or D'];
+    teams.push({ team: t.team, session: str(t.session, 20), oppServer: str(t.oppServer, 10), oppAlliance: str(t.oppAlliance, 40),
+      oppPower: numOrNull(t.oppPower), score: numOrNull(t.score), oppScore: numOrNull(t.oppScore), result, ourPower: numOrNull(t.ourPower), starters: numOrNull(t.starters) });
+  }
+  if (new Set(teams.map(t => t.team)).size !== teams.length) return [null, 'team listed twice'];
+  const players = [], seen = new Set();
+  for (const p of Array.isArray(e.players) ? e.players : []) {
+    const name = str(p.name), uid = str(p.uid, 24), team = p.team, prole = p.role, status = p.status;
+    if (!name) return [null, 'player name required'];
+    if (!LEDGER_TEAMS.includes(team)) return [null, 'bad team for ' + name];
+    if (!ROLE_STATUS[prole]) return [null, 'role must be Starter or Sub (' + name + ')'];
+    if (!ROLE_STATUS[prole].includes(status)) return [null, 'bad status ' + status + ' for ' + prole + ' ' + name];
+    const k = uid || 'name:' + name; if (seen.has(k)) return [null, name + ' listed twice']; seen.add(k);
+    players.push({ uid, name, team, role: prole, status, points: numOrNull(p.points) });
+  }
+  if (players.length > 120) return [null, 'too many players'];
+  return [{ date, measure: str(e.measure, 20), teams, players }, null];
+}
+function mergeEvent(old, inc) {
+  const out = JSON.parse(JSON.stringify(old));
+  for (const t of inc.teams || []) {
+    let o = out.teams.find(x => x.team === t.team); if (!o) { o = { team: t.team }; out.teams.push(o); }
+    for (const [k, v] of Object.entries(t)) if (v !== undefined && v !== null && v !== '') o[k] = v;
+  }
+  for (const p of inc.players || []) {
+    const o = out.players.find(x => (p.uid && x.uid === p.uid) || (!p.uid && x.name === p.name));
+    if (!o) continue;                              // merge never adds players: the locked roster stays as locked
+    if (p.points !== undefined) o.points = numOrNull(p.points);
+    if (p.status !== undefined && ROLE_STATUS[o.role].includes(p.status)) o.status = p.status;
+  }
+  return out;
+}
 const role = (env, code) => safeEq(code, env.OFFICER_CODE) ? 'officer' : safeEq(code, env.MEMBER_CODE) ? 'member' : null;
 
 export default {
@@ -99,6 +142,48 @@ export default {
         }
         return json({ ok: true, votes, overrides, dropped, at });
       }
+      if (path === '/ledger' && req.method === 'GET') {
+        const L = (await env.BOARD.get('ledger', 'json')) || { rev: 0, events: [] };
+        if (url.searchParams.get('rev') === String(L.rev)) return json({ rev: L.rev, unchanged: true });
+        return json(L);
+      }
+      if ((path === '/ledger' || path === '/ledger/delete' || path === '/ledger/rename') && req.method === 'POST') {
+        const sync = safeEq(req.headers.get('X-Sync-Key'), env.SYNC_KEY), r = sync ? 'sync' : role(env, req.headers.get('X-Code'));
+        if (!r) return json({ error: 'bad code' }, 401);
+        if (r === 'member') return json({ error: 'the ledger needs the officer code' }, 403);
+        let b; try { b = await req.json(); } catch (x) { return json({ error: 'body is not JSON' }, 400); }
+        const L = (await env.BOARD.get('ledger', 'json')) || { rev: 0, events: [] }, by = str(b.by) || r, now = new Date().toISOString();
+        if (path === '/ledger/rename') {
+          const from = str(b.from), to = str(b.to), uid = str(b.uid, 24);
+          if (!from || !to || from === to) return json({ error: 'from and to required' }, 400);
+          let n = 0;
+          for (const e of L.events) for (const p of e.players) if (p.name === from || (uid && p.uid === uid)) { p.name = to; if (uid) p.uid = uid; n++; }
+          if (!n) return json({ ok: true, renamed: 0, rev: L.rev });
+          L.renames = (L.renames || []).concat({ from, to, uid: uid || undefined, at: now, by }).slice(-200);
+        } else if (path === '/ledger/delete') {
+          const n = L.events.length; L.events = L.events.filter(e => e.date !== String(b.date));
+          if (L.events.length === n) return json({ error: 'no event on that date' }, 404);
+        } else {
+          const old = L.events.find(e => e.date === str(b.event && b.event.date, 10));
+          let ev;
+          if (b.merge) {
+            if (!old) return json({ error: 'no event on that date to merge into' }, 404);
+            ev = mergeEvent(old, b.event || {});
+            const [chk, err] = cleanEvent(ev); if (err) return json({ error: err }, 400);
+            ev = { ...old, ...chk };
+          } else {
+            const [chk, err] = cleanEvent(b.event); if (err) return json({ error: err }, 400);
+            if (!chk.players.length) return json({ error: 'no rostered players to lock in' }, 400);
+            ev = { ...chk, lockedAt: old ? old.lockedAt : now, lockedBy: old ? old.lockedBy : by };
+          }
+          if (old) { ev.editedAt = now; ev.editedBy = by; }
+          L.events = L.events.filter(e => e.date !== ev.date).concat(ev).sort((x, y) => x.date < y.date ? -1 : 1);
+        }
+        L.rev = (L.rev || 0) + 1; L.updated = now; L.updatedBy = by;
+        const prev = await env.BOARD.get('ledger'); if (prev) await env.BOARD.put('ledger:prev', prev);   // one-step undo copy
+        await env.BOARD.put('ledger', JSON.stringify(L));
+        return json({ ok: true, rev: L.rev, events: L.events.length });
+      }
       if (path === '/edits' && req.method === 'GET') {
         if (!safeEq(req.headers.get('X-Sync-Key'), env.SYNC_KEY)) return json({ error: 'forbidden' }, 403);
         const list = await env.BOARD.list({ prefix: 'edit:', limit: 500 });
@@ -121,10 +206,11 @@ export default {
         const log = (await env.BOARD.get('log', 'json')) || [];
         return json({ log: log.map(e => ({ name: e.name, avail: e.avail, slot: e.slot, by: e.by, role: e.role, at: e.at, applied: e.applied, error: e.error })) });
       }
-      if (path === '/' ) return json({ service: 'JTB 293 board API', routes: ['GET /data', 'POST /edit', 'GET /log'] });
+      if (path === '/' ) return json({ service: 'JTB 293 board API', routes: ['GET /data', 'POST /edit', 'GET /log', 'GET /ledger'] });
       return json({ error: 'not found' }, 404);
     } catch (err) {
       return json({ error: String(err && err.message || err) }, 500);
     }
   }
 };
+

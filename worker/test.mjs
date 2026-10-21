@@ -48,4 +48,28 @@ for (const k of [...kv.keys()]) if (k.startsWith('edit:')) kv.delete(k);
 const [, cj2] = await call('/clear', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ slots: true }) });
 q = (await call('/edits', { headers: { 'X-Sync-Key': 'sync-secret' } }))[1].edits;
 ok(cj2.votes === 2 && cj2.overrides === 2 && q.length === 3 && q.find(e => e.name === 'BB').slot === 'auto' && q.find(e => e.name === 'BB').avail === undefined && q.find(e => e.name === 'Zed').slot === 'auto', 'clear slots too ' + JSON.stringify(q));
+// ledger
+const ev = { date: '2026-10-23', measure: 'Arena power', teams: [{ team: 'T1', session: '23:00', oppServer: '#301', oppAlliance: 'ABC', oppPower: '7,100,000,000', score: 1200, oppScore: 900, result: 'w', ourPower: 6.8e9 }, { team: 'T2', session: '18:00' }],
+  players: [{ uid: '1', name: 'Kathi', team: 'T1', role: 'Starter', status: 'show' }, { uid: '2', name: 'BB', team: 'T1', role: 'Sub', status: 'not-needed' }, { uid: '3', name: 'Zed', team: 'T2', role: 'Starter', status: 'no-show', extra: 'x' }] };
+ok((await call('/ledger'))[1].events.length === 0, 'empty ledger');
+ok((await call('/ledger', { method: 'POST', headers: { 'X-Code': 'mem456' }, body: JSON.stringify({ event: ev }) }))[0] === 403, 'member cannot lock');
+ok((await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: { ...ev, players: [{ ...ev.players[0], status: 'played' }] } }) }))[0] === 400, 'starter cannot be "played"');
+ok((await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: { ...ev, date: '10/23' } }) }))[0] === 400, 'bad date');
+const [ls1, lj1] = await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: ev, by: 'Joe' }) });
+ok(ls1 === 200 && lj1.rev === 1, 'lock in ' + JSON.stringify(lj1));
+let L = (await call('/ledger'))[1];
+ok(L.events[0].teams[0].oppPower === 7.1e9 && L.events[0].teams[0].result === 'W' && L.events[0].lockedBy === 'Joe' && !('extra' in L.events[0].players[2]), 'event cleaned ' + JSON.stringify(L.events[0].teams[0]));
+ok((await call('/ledger?rev=1'))[1].unchanged === true, 'rev check');
+await call('/ledger', { method: 'POST', headers: { 'X-Sync-Key': 'sync-secret' }, body: JSON.stringify({ merge: true, event: { date: '2026-10-23', teams: [{ team: 'T2', score: 500, oppScore: 800, result: 'L' }], players: [{ uid: '1', points: 345 }, { name: 'Ghost', points: 9 }] } }) });
+L = (await call('/ledger'))[1];
+const e0 = L.events[0];
+ok(e0.players.length === 3 && e0.players[0].points === 345 && e0.teams[1].result === 'L' && e0.teams[0].score === 1200 && e0.editedBy === 'sync' && L.rev === 2, 'merge points ' + JSON.stringify(e0));
+await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: { ...ev, date: '2026-10-16' } }) });
+L = (await call('/ledger'))[1]; ok(L.events.map(e => e.date).join() === '2026-10-16,2026-10-23', 'sorted by date');
+ok(kv.has('ledger:prev'), 'undo copy kept');
+let rn = (await call('/ledger/rename', { method: 'POST', headers: { 'X-Sync-Key': 'sync-secret' }, body: JSON.stringify({ from: 'BB', to: 'BigBen' }) }))[1];
+L = (await call('/ledger'))[1];
+ok(rn.ok && L.events.every(e => e.players.some(p => p.name === 'BigBen') && !e.players.some(p => p.name === 'BB')) && L.renames[0].to === 'BigBen', 'rename carries history');
+ok((await call('/ledger/rename', { method: 'POST', headers: { 'X-Code': 'mem456' }, body: JSON.stringify({ from: 'Zed', to: 'Z' }) }))[0] === 403, 'member cannot rename');
+ok((await call('/ledger/delete', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ date: '2026-10-16' }) }))[1].events === 1, 'delete event');
 console.log(fails ? fails + ' FAILURES' : 'WORKER TESTS PASSED');
