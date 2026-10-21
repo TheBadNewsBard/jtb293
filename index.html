@@ -745,7 +745,8 @@ function openMember(name){
       ? lineChart([{name: useArena ? 'Arena' : 'H+V', vals: (useArena?ah:h).map(x => useArena ? x.arena : x.hv), col:'var(--s1)'}], (useArena?ah:h).map(x=>dShort(x.date)), {label: name + (useArena ? ' arena power' : ' hero plus vehicle') + ' over time'})
       : '<p style="color:var(--fg-3)">Only one snapshot so far' + (BY_ARENA && ARENA_OK ? ' with arena power; hero + vehicle history is below.' : '.') + '</p>'}
     <dl class="kv">${rows.map(([k,v,d]) => `<dt>${k}</dt><dd>${v}${d==null?'':` <span class="${d>0?'d-up':d<0?'d-down':'d-flat'}" style="font-size:12px">${signed(d)}</span>`}</dd>`).join('')}
-      <dt>Canyon vote</dt><dd>${esc(c.avail || 'no vote')}</dd><dt>Canyon slot</dt><dd>${esc(c.final || '—')}</dd>${c.t10?`<dt>T10</dt><dd>${esc(c.t10)}</dd>`:''}<dt>UID</dt><dd class="mono" style="font-size:12px">${esc(m.uid)}</dd></dl>
+      <dt>Canyon vote</dt><dd>${esc(c.avail || 'no vote')}</dd><dt>Canyon slot</dt><dd>${esc(c.final || '—')}</dd>${c.t10?`<dt>T10</dt><dd>${esc(c.t10)}</dd>`:''}<dt>JTB ID</dt><dd class="mono" style="font-size:12px">${esc(pidOf(name) || '—')}${(() => { const o = (D.ids || []).find(r => r[0] === pidOf(name)); return o && o[5] ? ` <span class="count" style="font-family:var(--body)">· was ${esc(o[5])}</span>` : ''; })()}</dd>
+      <dt>Game UID</dt><dd class="mono" style="font-size:12px">${m.uid ? esc(m.uid) : '<span class="count" style="font-family:var(--body)">not captured yet</span>'}</dd></dl>
     ${memberCanyon(name)}
     ${(READONLY && !WEB) ? '' : `<div class="edit"><label>Availability<select id="ed-avail">${AVAIL_OPTIONS.map(o => `<option value="${o}" ${o===(c.avail||'')?'selected':''}>${o || 'No vote'}</option>`).join('')}</select></label>
       <label>Canyon slot<select id="ed-slot">${SLOT_OPTIONS.map(o => `<option value="${o}" ${(c.manual ? o===c.final : o==='auto')?'selected':''}>${o==='auto' ? 'Auto ('+(c.manual ? autoSlotOf(c) : (c.final||'not placed'))+')' : o}</option>`).join('')}</select></label>
@@ -762,7 +763,7 @@ function openMember(name){
   }
   $('#drawer').hidden = false;
   $('#close').onclick = closeDrawer;
-  $('#copy-uid').onclick = () => copy(m.uid, 'UID copied');
+  $('#copy-uid').onclick = () => copy(m.uid || pidOf(name), m.uid ? 'UID copied' : 'JTB ID copied');
   $('#copy-line').onclick = () => copy(`${m.name} (${m.rank}, HQ ${m.hq})${ARENA_OK ? ' arena ' + fmtM(m.arena||0) : ''} H+V ${fmtM(m.hv)} · hero ${fmtM(m.hero)} · vehicle ${fmtM(m.veh)} · total ${fmtM(m.total)}`, 'Summary copied');
 }
 function closeDrawer(){ $('#drawer').hidden = true; }
@@ -786,11 +787,27 @@ let LEDGER = { rev: 0, events: [] }, ledgerState = 'loading';
 const STATUS = { show: ['Show', 'good'], 'no-show': ['No-show', 'bad'], played: ['Played', 'good'], 'not-needed': ['Not needed', 'idle'] };
 const sessOf = t => sessKey(t === 'T1' ? D.meta.t1 : D.meta.t2);          // "23:00" / "18:00"
 const teamName = t => (t === 'T1' ? 'Team 1' : 'Team 2') + ' · ' + sessOf(t);
-// In-game UID when the capture has one (newest snapshot first, then older ones); the name otherwise. Renames of members
-// without a UID are carried into the ledger by POST /ledger/rename (the weekly run calls it when it applies a rename).
+// Identity. Every member has a permanent JTB ID (J0001...) from the private DB: issued once, never reused, kept through
+// renames; a merged-away ID points at the survivor. The in-game UID sits beside it when captured. The ledger stores
+// {pid, uid, name} per player; a locked row is matched to a member by JTB ID, then game UID, then any name they have used.
+let IDX = null;
+function ids(){
+  if (IDX && IDX.D === D) return IDX;
+  const into = {}, nameOf = {}, byUid = {}, byName = {}, status = {}, cur = new Set();
+  (D.ids || []).forEach(([id, uid, name, st, merged, other]) => { status[id] = st; if (merged) into[id] = merged; if (name) nameOf[id] = name;
+    if (uid) byUid[String(uid)] = id; String(other || '').split(' | ').filter(Boolean).forEach(n => { byName[n] ??= id; }); });
+  D.history.forEach(h => { if (h.pid) { byName[h.name] = h.pid; if (h.uid) byUid[String(h.uid)] = h.pid; } });
+  latest.forEach(m => { if (m.pid) { cur.add(m.pid); nameOf[m.pid] = m.name; } });
+  return IDX = { D, into, nameOf, byUid, byName, status, cur };
+}
+const root = id => { const X = ids(); let n = 0; while (id && X.into[id] && n++ < 20) id = X.into[id]; return id || ''; };
+const uidHit = (u, X) => { u = String(u || '').replace(/\D/g, ''); if (!u) return ''; if (X.byUid[u]) return X.byUid[u];
+  const k = Object.keys(X.byUid).find(x => (x.length === 16 && x.startsWith(u) && u.length >= 9) || (u.length === 16 && u.startsWith(x) && x.length >= 9)); return k ? X.byUid[k] : ''; };
+const pidOf = name => root(ids().byName[name] || '');
 const uidOf = name => { const h = (hist[name] || []).slice().reverse().find(x => x.uid); return h ? String(h.uid) : ''; };
-const nameByUid = () => { const o = {}; latest.forEach(m => { const u = uidOf(m.name); if (u) o[u] = m.name; }); return o; };
-const pkey = p => p.uid ? String(p.uid) : 'name:' + p.name;
+const who_ = p => { const X = ids(); return root(p.pid) || uidHit(p.uid, X) || root(X.byName[p.name] || ''); };   // the member behind a locked row
+const pkey = p => { const id = who_(p); return id || (p.uid ? 'uid:' + p.uid : 'name:' + p.name); };
+const shownName = p => { const id = who_(p); return (id && ids().nameOf[id]) || p.name; };
 function parsePower(v){
   const s = String(v ?? '').trim().replace(/,/g, '').replace(/\s/g, ''); if (!s) return null;
   const m = s.match(/^(\d*\.?\d+)([KMBG])?$/i); if (!m) return NaN;
@@ -817,7 +834,7 @@ function lockDraftFor(date){
   const ev = LEDGER.events.find(e => e.date === date);
   if (ev) return { date, edit: true, teams: Object.fromEntries(['T1','T2'].map(t => [t, { ...(ev.teams.find(x => x.team === t) || { team: t }) }])), players: ev.players.map(p => ({ ...p })), measure: ev.measure };
   const cs = canyonSummary(), players = [];
-  ['T1','T2'].forEach(t => cs.teams[t].forEach(p => players.push({ uid: uidOf(p.name), name: p.name, team: t, role: p.starter ? 'Starter' : 'Sub', status: p.starter ? 'show' : 'not-needed', points: null })));
+  ['T1','T2'].forEach(t => cs.teams[t].forEach(p => players.push({ pid: pidOf(p.name), uid: uidOf(p.name), name: p.name, team: t, role: p.starter ? 'Starter' : 'Sub', status: p.starter ? 'show' : 'not-needed', points: null })));
   const teams = {}; ['T1','T2'].forEach(t => { teams[t] = { team: t, session: sessOf(t), oppServer: '', oppAlliance: '', oppPower: null, score: null, oppScore: null, result: '', ourPower: t === 'T1' ? cs.s1 : cs.s2, starters: cs.teams[t].filter(p => p.starter).length }; });
   return { date, edit: false, teams, players, measure: D.meta.by };
 }
@@ -909,10 +926,10 @@ function ledgerMatches(evs){
   return out;
 }
 function playerStats(matches, roleF){
-  const by = {}, cur = nameByUid();
+  const by = {}, X = ids();
   matches.forEach(m => m.ps.forEach(p => { if (roleF && p.role !== roleF) return;
-    const k = pkey(p), s = by[k] ||= { key: k, uid: p.uid, name: cur[p.uid] || p.name, names: new Set(), rostered: 0, starter: 0, sub: 0, played: 0, noShow: 0, notNeeded: 0, w: 0, l: 0, pts: [], hist: [] };
-    if (!cur[p.uid]) s.name = p.name;                                   // no UID on the roster: newest locked name
+    const pid = who_(p), k = pkey(p), s = by[k] ||= { key: k, pid, uid: p.uid || '', name: p.name, names: new Set(), rostered: 0, starter: 0, sub: 0, played: 0, noShow: 0, notNeeded: 0, w: 0, l: 0, pts: [], hist: [] };
+    s.name = (pid && X.nameOf[pid]) || p.name; if (p.uid) s.uid = p.uid;        // the member's current name; else the newest locked name
     s.names.add(p.name); s.rostered++; p.role === 'Starter' ? s.starter++ : s.sub++;
     const played = p.status === 'show' || p.status === 'played';
     if (played) { s.played++; if (m.T.result === 'W') s.w++; else if (m.T.result === 'L') s.l++; }
@@ -921,7 +938,7 @@ function playerStats(matches, roleF){
     s.hist.push({ date: m.date, session: m.session, role: p.role, status: p.status, result: played ? m.T.result : '', points: p.points });
   }));
   const curNames = new Set(latest.map(m => m.name));
-  return Object.values(by).map(s => ({ ...s, current: s.uid ? !!cur[s.uid] : curNames.has(s.name), noShowRate: s.starter ? s.noShow / s.starter : null, winRate: (s.w + s.l) ? s.w / (s.w + s.l) : null, avgPts: s.pts.length ? sum(s.pts, x => x) / s.pts.length : null, hist: s.hist.sort((a,b) => a.date < b.date ? -1 : 1) }));
+  return Object.values(by).map(s => ({ ...s, current: s.pid ? X.cur.has(s.pid) : curNames.has(s.name), noShowRate: s.starter ? s.noShow / s.starter : null, winRate: (s.w + s.l) ? s.w / (s.w + s.l) : null, avgPts: s.pts.length ? sum(s.pts, x => x) / s.pts.length : null, hist: s.hist.sort((a,b) => a.date < b.date ? -1 : 1) }));
 }
 const rate = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
 const pchip = h => { const [lab, cls] = STATUS[h.status] || ['?','idle']; return `<i class="dot ${cls}" data-tip="${dShort(h.date)} · ${esc(h.session)}|${h.role} · ${lab}${h.result ? ' · ' + (h.result === 'W' ? 'won' : 'lost') : ''}${h.points != null ? ' · ' + h.points + ' pts' : ''}"></i>`; };
@@ -991,7 +1008,7 @@ function renderCanyonTrends(host){
     <div class="panel c4"><h3>Most no-shows <span class="note">${CT.range === 'all' ? 'all Fridays' : 'last ' + CT.range}</span></h3>${noShowTop.length ? `<div class="mini" style="flex-direction:column;gap:4px">${noShowTop.map(p => `<div style="display:flex;justify-content:space-between;gap:8px"><span ${p.current ? `data-member="${esc(p.name)}" style="cursor:pointer"` : ''}>${esc(p.name)}</span><span class="d-down">${p.noShow} of ${p.starter} starts</span></div>`).join('')}</div>` : '<p class="count">Nobody missed a start.</p>'}</div>
     <div class="panel c12"><h3>Players · ${P.length} <span class="note">played = started and showed, or a sub who played · no-show rate = no-shows ÷ starts · W–L only counts matches they played · click a header to sort</span></h3>
       <div class="tablewrap"><table data-skey="ctp"><thead><tr><th class="l">Player</th><th>Rostered</th><th>Starter</th><th>Sub</th><th>Played</th><th>No-shows</th><th>No-show rate</th><th>Not needed</th><th>W–L</th><th>Win rate</th><th>Avg points</th><th class="l">Recent (newest right)</th></tr></thead>
-      <tbody>${P.map(p => `<tr${p.current ? '' : ' style="opacity:.6"'}><td class="l" data-v="${esc(p.name)}">${p.current ? `<span data-member="${esc(p.name)}" style="cursor:pointer">${esc(p.name)}</span>` : esc(p.name) + ' <span class="count">(left)</span>'}${p.names.size > 1 ? ` <span class="count" data-tip="Also locked as|${esc([...p.names].filter(x => x !== p.name).join(', '))}">↺</span>` : ''}</td>
+      <tbody>${P.map(p => `<tr${p.current ? '' : ' style="opacity:.6"'}><td class="l" data-v="${esc(p.name)}">${p.current ? `<span data-member="${esc(p.name)}" style="cursor:pointer">${esc(p.name)}</span>` : esc(p.name) + ' <span class="count">(left)</span>'}${[...p.names].some(x => x !== p.name) ? ` <span class="count" data-tip="${esc(p.pid || '')} · also locked as|${esc([...p.names].filter(x => x !== p.name).join(', '))}">↺</span>` : ''}${p.pid ? `<span class="count" style="margin-left:6px">${esc(p.pid)}</span>` : ''}</td>
         <td>${p.rostered}</td><td>${p.starter}</td><td>${p.sub}</td><td>${p.played}</td><td>${p.noShow}</td><td data-v="${p.noShowRate == null ? '' : (p.noShowRate*100).toFixed(1)}">${p.noShowRate == null ? '—' : Math.round(p.noShowRate*100) + '%'}</td><td>${p.notNeeded}</td>
         <td>${p.w}–${p.l}</td><td data-v="${p.winRate == null ? '' : (p.winRate*100).toFixed(1)}">${p.winRate == null ? '—' : Math.round(p.winRate*100) + '%'}</td><td>${p.avgPts == null ? '—' : Math.round(p.avgPts).toLocaleString('en-US')}</td>
         <td class="l dots" data-v="${p.hist.length}">${p.hist.slice(-10).map(pchip).join('')}</td></tr>`).join('')}</tbody></table></div>
@@ -1001,7 +1018,7 @@ function renderCanyonTrends(host){
         return `<details class="ev"${e.date === evDates[evDates.length-1] ? ' open' : ''}><summary><b>${dLong(e.date)}</b>${ms.map(m => `<span class="res ${m.T.result === 'W' ? 'w' : m.T.result === 'L' ? 'l' : ''}">${esc(m.session)} ${m.T.result === 'W' ? 'Win' : m.T.result === 'L' ? 'Loss' : '—'}${m.T.score != null ? ' ' + m.T.score.toLocaleString('en-US') + '–' + (m.T.oppScore != null ? m.T.oppScore.toLocaleString('en-US') : '?') : ''}</span>`).join('')}<span class="count">${sum(ms, m => m.showed)}/${sum(ms, m => m.starters)} starters showed</span>${LEDGER_API ? `<button class="btn small" data-edit-ev="${e.date}" style="margin-left:auto">Edit</button>` : ''}</summary>
           <div class="evb">${ms.map(m => `<div><h4 style="color:var(--${m.team.toLowerCase()})">${m.team === 'T1' ? 'Team 1' : 'Team 2'} · ${esc(m.session)}</h4>
             <dl class="kv"><dt>Opponent</dt><dd>${esc([m.T.oppAlliance, m.T.oppServer ? '#' + String(m.T.oppServer).replace(/^#/, '') : ''].filter(Boolean).join(' · ') || '—')}</dd><dt>Their power</dt><dd>${m.T.oppPower ? fmt(m.T.oppPower) : '—'}</dd><dt>Our starters</dt><dd>${m.T.ourPower ? fmt(m.T.ourPower) + ' <span class="count">' + esc((e.measure || '').toLowerCase()) + '</span>' : '—'}</dd><dt>Score</dt><dd>${m.T.score != null ? m.T.score.toLocaleString('en-US') : '—'} – ${m.T.oppScore != null ? m.T.oppScore.toLocaleString('en-US') : '—'}</dd></dl>
-            <div class="lgrid ro">${m.ps.slice().sort((a,b) => (a.role === b.role ? 0 : a.role === 'Starter' ? -1 : 1) || (b.points ?? -1) - (a.points ?? -1)).map(p => { const [lab, cls] = STATUS[p.status]; return `<div class="lrow"><span class="n">${esc(nameByUid()[p.uid] || p.name)}</span><span class="count">${p.role === 'Sub' ? 'sub' : ''}</span><span class="pchip ${cls}">${lab}</span><span class="v">${p.points != null ? p.points.toLocaleString('en-US') : ''}</span></div>`; }).join('')}</div></div>`).join('')}
+            <div class="lgrid ro">${m.ps.slice().sort((a,b) => (a.role === b.role ? 0 : a.role === 'Starter' ? -1 : 1) || (b.points ?? -1) - (a.points ?? -1)).map(p => { const [lab, cls] = STATUS[p.status]; return `<div class="lrow"><span class="n">${esc(shownName(p))}</span><span class="count">${p.role === 'Sub' ? 'sub' : ''}</span><span class="pchip ${cls}">${lab}</span><span class="v">${p.points != null ? p.points.toLocaleString('en-US') : ''}</span></div>`; }).join('')}</div></div>`).join('')}
             <p class="count" style="grid-column:1/-1;margin:0">Locked ${e.lockedAt ? dShort(e.lockedAt.slice(0,10)) : ''}${e.lockedBy ? ' by ' + esc(e.lockedBy) : ''}${e.editedAt ? ' · edited ' + dShort(e.editedAt.slice(0,10)) + (e.editedBy ? ' by ' + esc(e.editedBy) : '') : ''}</p></div></details>`; }).join('')}</div>
   </div>`;
   const keep = (k, id, key) => { $(id).onchange = e => { CT[k] = e.target.value; ls.set(key, CT[k]); renderTrends(); }; };
@@ -1009,7 +1026,7 @@ function renderCanyonTrends(host){
   host.querySelectorAll('[data-edit-ev]').forEach(b => b.onclick = e => { e.preventDefault(); ls.set('jtb-lockdraft', ''); LK = lockDraftFor(b.dataset.editEv); lockOpen = true; show('canyon'); $('#lockbox') && $('#lockbox').scrollIntoView({ block: 'start' }); });
 }
 function memberCanyon(name){
-  const uid = uidOf(name), M = ledgerMatches(LEDGER.events), s = playerStats(M).find(p => (uid && p.uid === uid) || p.name === name);
+  const pid = pidOf(name), M = ledgerMatches(LEDGER.events), s = playerStats(M).find(p => (pid && p.pid === pid) || (!p.pid && p.name === name));
   if (!s) return LEDGER.events.length ? '<div class="eyebrow" style="margin-top:14px">Canyon record</div><p class="count" style="margin:4px 0 0">Not on a locked Canyon roster yet.</p>' : '';
   return `<div class="eyebrow" style="margin-top:14px">Canyon record · ${s.rostered} rostered</div>
     <dl class="kv"><dt>Starter / sub</dt><dd>${s.starter} / ${s.sub}</dd><dt>Played</dt><dd>${s.played}</dd><dt>No-shows</dt><dd>${s.noShow}${s.noShowRate != null ? ' <span class="count">(' + Math.round(s.noShowRate*100) + '% of starts)</span>' : ''}</dd><dt>Not needed</dt><dd>${s.notNeeded}</dd><dt>W–L</dt><dd>${s.w}–${s.l}${s.winRate != null ? ' <span class="count">(' + Math.round(s.winRate*100) + '%)</span>' : ''}</dd>${s.avgPts != null ? `<dt>Avg points</dt><dd>${Math.round(s.avgPts).toLocaleString('en-US')}</dd>` : ''}<dt>Recent</dt><dd class="dots">${s.hist.slice(-10).map(pchip).join('')}</dd></dl>`;
@@ -1160,7 +1177,7 @@ async function connect(){
 }
 connect();
 loadLedger(); setInterval(() => { if (!document.hidden && !lockOpen) loadLedger(); }, 120000);
-window.__jtb = { get D(){ return D; }, recompute, applyEdit, canyonSummary, get LEDGER(){ return LEDGER; }, loadLedger, playerStats, ledgerMatches };
+window.__jtb = { get D(){ return D; }, ids, pidOf, recompute, applyEdit, canyonSummary, get LEDGER(){ return LEDGER; }, loadLedger, playerStats, ledgerMatches };
 
 // ---------- utilities
 function copy(text, msg){

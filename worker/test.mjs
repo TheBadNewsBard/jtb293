@@ -67,9 +67,17 @@ ok(e0.players.length === 3 && e0.players[0].points === 345 && e0.teams[1].result
 await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: { ...ev, date: '2026-10-16' } }) });
 L = (await call('/ledger'))[1]; ok(L.events.map(e => e.date).join() === '2026-10-16,2026-10-23', 'sorted by date');
 ok(kv.has('ledger:prev'), 'undo copy kept');
+// JTB IDs: stored, bad ones dropped, one entry per ID, merge matches by ID
+const evp = { date: '2026-10-30', teams: [{ team: 'T1', session: '23:00' }], players: [{ pid: 'J0007', uid: '1094199928', name: 'Kathi', team: 'T1', role: 'Starter', status: 'show' }, { pid: 'x99', name: 'BB', team: 'T1', role: 'Sub', status: 'not-needed' }] };
+ok((await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: evp }) }))[0] === 200, 'lock with JTB IDs');
+let E = (await call('/ledger'))[1].events.find(e => e.date === '2026-10-30');
+ok(E.players[0].pid === 'J0007' && E.players[0].uid === '1094199928' && E.players[1].pid === '', 'pid stored, junk pid dropped ' + JSON.stringify(E.players));
+ok((await call('/ledger', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ event: { ...evp, players: [evp.players[0], { ...evp.players[0], name: 'Kathi2' }] } }) }))[0] === 400, 'same JTB ID twice refused');
+await call('/ledger', { method: 'POST', headers: { 'X-Sync-Key': 'sync-secret' }, body: JSON.stringify({ merge: true, event: { date: '2026-10-30', players: [{ pid: 'J0007', points: 88 }] } }) });
+E = (await call('/ledger'))[1].events.find(e => e.date === '2026-10-30'); ok(E.players[0].points === 88, 'points merged by JTB ID');
 let rn = (await call('/ledger/rename', { method: 'POST', headers: { 'X-Sync-Key': 'sync-secret' }, body: JSON.stringify({ from: 'BB', to: 'BigBen' }) }))[1];
 L = (await call('/ledger'))[1];
 ok(rn.ok && L.events.every(e => e.players.some(p => p.name === 'BigBen') && !e.players.some(p => p.name === 'BB')) && L.renames[0].to === 'BigBen', 'rename carries history');
 ok((await call('/ledger/rename', { method: 'POST', headers: { 'X-Code': 'mem456' }, body: JSON.stringify({ from: 'Zed', to: 'Z' }) }))[0] === 403, 'member cannot rename');
-ok((await call('/ledger/delete', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ date: '2026-10-16' }) }))[1].events === 1, 'delete event');
+ok((await call('/ledger/delete', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ date: '2026-10-16' }) }))[1].events === 2, 'delete event');
 console.log(fails ? fails + ' FAILURES' : 'WORKER TESTS PASSED');

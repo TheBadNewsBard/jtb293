@@ -19,6 +19,15 @@
  *                              who has one (and "auto" for every manual slot when slots is true), and drop the vote
  *                              (and slot) part of any change still waiting, so last week's choices cannot land
  *                              after the reset. Votes sent after the reset queue behind it and win.
+ *   GET  /ledger[?rev=N]       Canyon Clash ledger {rev, events}; with ?rev equal to the current one, just {rev, unchanged}
+ *   POST /ledger               X-Code (officer) or X-Sync-Key  {event, merge?}  lock in one Canyon (one event per date;
+ *                              a second lock of the same date replaces it). merge:true only updates the fields sent
+ *                              (scores, opponent, a player's points/status) - what the capture skill uses for points.
+ *                              Each player is {pid (JTB ID, J0001...), uid (game UID, optional), name, team, role, status, points}.
+ *   POST /ledger/delete        X-Code (officer) or X-Sync-Key  {date}
+ *   POST /ledger/rename        X-Code (officer) or X-Sync-Key  {from, to, uid?, pid?}  backfill for rows locked by name only:
+ *                              rewrites the name (and fills in the JTB ID / UID) on every locked Friday. Rows that carry a
+ *                              JTB ID never need it - the page and the sheet match them to the member by ID.
  */
 const AVAIL = ['', '18:00 only', '23:00 only', 'Both', 'N/A'];
 const MAX_PENDING = 300;   // queue cap (see /edit); the sheet drains the queue every minute
@@ -44,13 +53,13 @@ function cleanEvent(e) {
   if (new Set(teams.map(t => t.team)).size !== teams.length) return [null, 'team listed twice'];
   const players = [], seen = new Set();
   for (const p of Array.isArray(e.players) ? e.players : []) {
-    const name = str(p.name), uid = str(p.uid, 24), team = p.team, prole = p.role, status = p.status;
+    const name = str(p.name), uid = str(p.uid, 24).replace(/\D/g, ''), pid = /^J\d{4,6}$/.test(str(p.pid, 8)) ? str(p.pid, 8) : '', team = p.team, prole = p.role, status = p.status;
     if (!name) return [null, 'player name required'];
     if (!LEDGER_TEAMS.includes(team)) return [null, 'bad team for ' + name];
     if (!ROLE_STATUS[prole]) return [null, 'role must be Starter or Sub (' + name + ')'];
     if (!ROLE_STATUS[prole].includes(status)) return [null, 'bad status ' + status + ' for ' + prole + ' ' + name];
-    const k = uid || 'name:' + name; if (seen.has(k)) return [null, name + ' listed twice']; seen.add(k);
-    players.push({ uid, name, team, role: prole, status, points: numOrNull(p.points) });
+    const k = pid || (uid ? 'uid:' + uid : 'name:' + name); if (seen.has(k)) return [null, name + ' listed twice']; seen.add(k);
+    players.push({ pid, uid, name, team, role: prole, status, points: numOrNull(p.points) });
   }
   if (players.length > 120) return [null, 'too many players'];
   return [{ date, measure: str(e.measure, 20), teams, players }, null];
@@ -62,7 +71,7 @@ function mergeEvent(old, inc) {
     for (const [k, v] of Object.entries(t)) if (v !== undefined && v !== null && v !== '') o[k] = v;
   }
   for (const p of inc.players || []) {
-    const o = out.players.find(x => (p.uid && x.uid === p.uid) || (!p.uid && x.name === p.name));
+    const o = out.players.find(x => (p.pid && x.pid === p.pid) || (!p.pid && p.uid && x.uid === p.uid) || (!p.pid && !p.uid && x.name === p.name));
     if (!o) continue;                              // merge never adds players: the locked roster stays as locked
     if (p.points !== undefined) o.points = numOrNull(p.points);
     if (p.status !== undefined && ROLE_STATUS[o.role].includes(p.status)) o.status = p.status;
@@ -154,12 +163,12 @@ export default {
         let b; try { b = await req.json(); } catch (x) { return json({ error: 'body is not JSON' }, 400); }
         const L = (await env.BOARD.get('ledger', 'json')) || { rev: 0, events: [] }, by = str(b.by) || r, now = new Date().toISOString();
         if (path === '/ledger/rename') {
-          const from = str(b.from), to = str(b.to), uid = str(b.uid, 24);
+          const from = str(b.from), to = str(b.to), uid = str(b.uid, 24), pid = /^J\d{4,6}$/.test(str(b.pid, 8)) ? str(b.pid, 8) : '';
           if (!from || !to || from === to) return json({ error: 'from and to required' }, 400);
           let n = 0;
-          for (const e of L.events) for (const p of e.players) if (p.name === from || (uid && p.uid === uid)) { p.name = to; if (uid) p.uid = uid; n++; }
+          for (const e of L.events) for (const p of e.players) if (p.name === from || (uid && p.uid === uid) || (pid && p.pid === pid)) { p.name = to; if (uid) p.uid = uid; if (pid) p.pid = pid; n++; }
           if (!n) return json({ ok: true, renamed: 0, rev: L.rev });
-          L.renames = (L.renames || []).concat({ from, to, uid: uid || undefined, at: now, by }).slice(-200);
+          L.renames = (L.renames || []).concat({ from, to, uid: uid || undefined, pid: pid || undefined, at: now, by }).slice(-200);
         } else if (path === '/ledger/delete') {
           const n = L.events.length; L.events = L.events.filter(e => e.date !== String(b.date));
           if (L.events.length === n) return json({ error: 'no event on that date' }, 404);
