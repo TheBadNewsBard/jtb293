@@ -578,11 +578,11 @@ const cdStamp = `Snapshot ${esc(CD.cdTime)}`, alStamp = `Snapshot ${esc(CD.alTim
 function renderChampion(){
   const q = ($('#cdq') || {value:''}).value.trim().toLowerCase(), idx = {rank:0,name:1,tag:2,server:4,power:5,kills:6,w:7,pts:9}, i = idx[cdSort];
   // Arena power across all three marches, from the Knockout reports on the Rivals tab (players swap gear between marches)
-  const rvMap = new Map(RV.players.map(p => [p[0] + '|' + p[2], p])), arena3 = r => { const p = rvMap.get(r[4] + '|' + r[1]); return p && p[7] != null ? p[7] : null; };
+  const rvMap = new Map(RV.players.map(p => [p[0] + '|' + p[2], p])), arena3 = r => { const p = rvMap.get(r[4] + '|' + r[1]); return p && p[24] != null ? p[24] : null; };
   // 1st march: Knockout report march 1, else our own roster's Arena Power (JTB members, one march), else Peak Match
   const fold = n => String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();   // WestPLAŸ VII = WestPLAY VII
   const jtbArena = new Map(latest.filter(m => m.arena).map(m => [fold(m.name), m.arena / 1e6]));
-  const arena1 = r => { const p = rvMap.get(r[4] + '|' + r[1]); if (p && p[4] != null) return p[4]; if (r[4] === 293 && r[2] === 'JTB' && jtbArena.has(fold(r[1]))) return jtbArena.get(fold(r[1])); return p && p[8] != null ? p[8] : null; };
+  const arena1 = r => { const p = rvMap.get(r[4] + '|' + r[1]); if (p && p[20] != null) return p[20]; if (p && p[8] != null) return p[8]; if (r[4] === 293 && r[2] === 'JTB' && jtbArena.has(fold(r[1]))) return jtbArena.get(fold(r[1])); return p && p[4] != null ? p[4] : null; };
   const cv = r => cdSort === 'arena' ? arena3(r) : cdSort === 'arena1' ? arena1(r) : r[i];
   const nv = v => v == null || v === '' ? null : v;
   const rows = CD.cd.filter(r => (cdAl === 'all' || r[2] === cdAl) && (cdSv === 'all' || String(r[4]) === cdSv) && (!q || r[1].toLowerCase().includes(q))).sort((a,b) => { const x = nv(cv(a)), y = nv(cv(b)); if (x == null || y == null) return (x == null) - (y == null); return (typeof x==='string' ? x.localeCompare(y, undefined, {numeric:true, sensitivity:'base'}) : x-y) * cdDir || a[4]-b[4] || a[0]-b[0]; });
@@ -594,7 +594,7 @@ function renderChampion(){
     <select id="cdsv"><option value="all">All servers</option>${svs.map(v => `<option value="${v}">Server ${v}</option>`).join('')}</select>
     <select id="cdal"><option value="all">All alliances</option>${tags.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
     <input id="cdq" placeholder="Search name" value="${esc(q)}" style="background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px">
-    <span class="count">${rows.length} shown · player power and kills as shown in the Champion Duel panel; arena 1st march from the Knockout report, our roster (JTB) or Peak Match; 3 marches = all three added, Knockout players only</span></div>
+    <span class="count">${rows.length} shown · player power and kills as shown in the Champion Duel panel; arena 1st march from Arena 3v3, 1v1 Peak Match, our roster (JTB) or the duel; 3 marches = all three added, from 3v3 when known else the duel</span></div>
     <div class="tablewrap"><table><thead><tr>${th('rank','#')}${th('name','Player','l')}${th('tag','Alliance','l')}${th('server','Server')}${th('power','Personal power')}${th('arena1','Arena, 1st march')}${th('arena','Arena, 3 marches')}${th('kills','Kills')}${th('w','W–L')}${th('pts','Points')}</tr></thead>
     <tbody>${rows.map(r => `<tr${r[2]==='JTB'&&r[4]===293?' style="background:var(--panel-2)"':''}><td>${r[0]}</td><td class="l">${esc(r[1])}</td><td class="l">${esc(r[2])}</td><td>${r[4]}</td><td>${r[5] != null ? r[5].toFixed(1)+'M' : '—'}</td>${[arena1(r), arena3(r)].map(a => `<td>${a == null ? '—' : (a >= 1000 ? (a/1000).toFixed(2)+'B' : a.toFixed(1)+'M')}</td>`).join('')}<td>${r[6] != null ? r[6].toFixed(1)+'M' : '—'}</td><td>${r[7]}–${r[8]}</td><td>${Number(r[9]).toLocaleString('en-US')}</td></tr>`).join('')}</tbody></table></div></div>`;
   $('#cdsv').value = cdSv; $('#cdsv').onchange = e => { cdSv = e.target.value; renderChampion(); };
@@ -619,46 +619,52 @@ function renderAlliances(){
 }
 
 
-// ---------- Rivals: other servers' arena players from Champion Duel Knockout reports + Arena Peak Match
-// rows: [server, tag, name, strongest, f1, f2, f3, koTotal, peak, tier, koGroup, koResult, score, opponent, peakRank, peakPoints, change, lastSeen, approx]; millions
+// ---------- Rivals: arena power of players on any server (Champion Duel Knockout reports, Arena 1v1 Peak Match, Arena 3v3)
+// rows (millions): 0 server, 1 tag, 2 name, 3 strongest march, 4-6 duel marches, 7 duel total, 8 1v1 peak march, 9 tier, 10 KO group,
+// 11 KO result, 12 score, 13 opponent, 14 peak rank, 15 peak points, 16 total change, 17 last seen, 18 duel approx,
+// 19 3v3 total, 20-22 3v3 marches, 23 3v3 rank, 24 total arena (3v3 else duel), 25 total source, 26 1st march, 27 total approx
 const RV = JSON.parse(document.getElementById('rivdata').textContent);
+RV.players.forEach(p => { if (p.length < 28) { p[24] = p[7]; p[25] = p[7] != null ? 'Duel' : ''; p[26] = p[8] ?? p[4]; p[27] = p[18]; } });
 let rvView = ls.get('jtb-rv') || 'players', rvSrv = 'all', rvSrc = 'all', rvAl = 'all';
 const mB = (v, ap) => v == null || v === '' ? '—' : (ap ? '~' : '') + (v >= 1000 ? (v / 1000).toFixed(2) + 'B' : v.toFixed(1) + 'M');
-const nc = (v, ap) => `<td data-v="${v == null ? '' : v}">${mB(v, ap)}</td>`;
+const nc = (v, ap, cls) => `<td${cls ? ` class="${cls}"` : ''} data-v="${v == null ? '' : v}">${mB(v, ap)}</td>`;
 function rvAgg(rows, keyf){
   const g = new Map(); rows.forEach(r => { const k = keyf(r); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
-  return [...g.entries()].map(([k, ps]) => { const b = ps.map(p => p[3]).filter(x => x), t = ps.map(p => p[7]).filter(x => x), top = ps.reduce((a, p) => (p[7] || 0) > (a[7] || 0) || (!a[7] && !p[7] && (p[3] || 0) > (a[3] || 0)) ? p : a, ps[0]);
-    return { k, ps, n: ps.length, ko: ps.filter(p => p[10]).length, played: ps.filter(p => p[11]).length, wins: ps.filter(p => p[11] === 'W').length, peak: ps.filter(p => p[14]).length,
-      t10: ps.filter(p => (p[9] || 0) >= 10).length, tiered: ps.filter(p => p[9]).length, avg: b.length ? b.reduce((s, x) => s + x, 0) / b.length : null, max: b.length ? Math.max(...b) : null,
-      avgT: t.length ? t.reduce((s, x) => s + x, 0) / t.length : null, maxT: t.length ? Math.max(...t) : null, sumT: t.reduce((s, x) => s + x, 0), nT: t.length, top }; }).sort((a, b) => (b.avgT || 0) - (a.avgT || 0) || (b.avg || 0) - (a.avg || 0));
+  return [...g.entries()].map(([k, ps]) => { const t = ps.map(p => p[24]).filter(x => x), m1 = ps.map(p => p[26]).filter(x => x);
+    const top = ps.reduce((a, p) => (p[24] || 0) > (a[24] || 0) || (!a[24] && !p[24] && (p[26] || 0) > (a[26] || 0)) ? p : a, ps[0]);
+    return { k, ps, n: ps.length, played: ps.filter(p => p[11]).length, wins: ps.filter(p => p[11] === 'W').length, peak: ps.filter(p => p[14]).length,
+      t10: ps.filter(p => (p[9] || 0) >= 10).length, tiered: ps.filter(p => p[9]).length, n3: ps.filter(p => p[25] === '3v3').length,
+      avgT: t.length ? t.reduce((s, x) => s + x, 0) / t.length : null, maxT: t.length ? Math.max(...t) : null, sumT: t.reduce((s, x) => s + x, 0), nT: t.length,
+      avgM1: m1.length ? m1.reduce((s, x) => s + x, 0) / m1.length : null, top }; }).sort((a, b) => (b.avgT || 0) - (a.avgT || 0) || (b.avgM1 || 0) - (a.avgM1 || 0));
 }
 function renderRivals(){
   const q = ($('#rvq') || { value: '' }).value.trim().toLowerCase();
-  const all = RV.players, srvs = [...new Set(all.map(p => p[0]))].sort((a, b) => a - b);
+  const all = RV.players, srvs = [...new Set(all.map(p => p[0]))].sort((a, b) => a - b), has3 = all.some(p => p[19] != null);
   const tags = [...new Set(all.filter(p => rvSrv === 'all' || String(p[0]) === rvSrv).map(p => p[1]))].sort((a, b) => a.localeCompare(b));
   if (rvAl !== 'all' && !tags.includes(rvAl)) rvAl = 'all';
   const rows = all.filter(p => (rvSrv === 'all' || String(p[0]) === rvSrv) && (rvAl === 'all' || p[1] === rvAl) &&
-    (rvSrc === 'all' || (rvSrc === 'ko' ? p[10] : rvSrc === 'peak' ? p[14] : p[0] !== 293)) && (!q || p[2].toLowerCase().includes(q) || p[1].toLowerCase().includes(q)));
+    (rvSrc === 'all' || (rvSrc === 'ko' ? p[10] : rvSrc === 'peak' ? p[14] : rvSrc === '3v3' ? p[19] != null : p[0] !== 293)) && (!q || p[2].toLowerCase().includes(q) || p[1].toLowerCase().includes(q)));
   const ours = p => p[0] === 293 && p[1] === 'JTB' ? ' style="background:var(--panel-2)"' : '';
   const tier = t => t == null ? '—' : t >= 10 ? 'T10' : 'T' + t;
+  const big = (v, ap) => v != null && v >= 1000 && ap;
   let body = '';
-  if (rvView === 'players') body = `<div class="tablewrap"><table data-skey="rv-players"><thead><tr><th>#</th><th>Server</th><th class="l">Alliance</th><th class="l">Player</th><th>Total arena<br><span class="note">3 marches</span></th><th>March 1</th><th class="hide-sm">March 2</th><th class="hide-sm">March 3</th><th>Peak 1st march</th><th class="hide-sm">Strongest march</th><th>Troops</th><th class="l">KO R1</th><th class="l hide-sm">Opponent</th><th class="hide-sm">Peak rank</th><th class="hide-sm">Change</th></tr></thead><tbody>${
-    rows.map((p, i) => `<tr${ours(p)}><td>${i + 1}</td><td>${p[0]}</td><td class="l">${esc(p[1])}</td><td class="l">${esc(p[2])}</td><td data-v="${p[7] ?? ''}"><b>${mB(p[7], p[18])}</b></td>${nc(p[4], p[18] && p[4] >= 1000)}<td class="hide-sm" data-v="${p[5] ?? ''}">${mB(p[5], p[18] && p[5] >= 1000)}</td><td class="hide-sm" data-v="${p[6] ?? ''}">${mB(p[6], p[18] && p[6] >= 1000)}</td>${nc(p[8])}<td class="hide-sm" data-v="${p[3] ?? ''}">${mB(p[3], p[18] && p[3] >= 1000)}</td><td data-v="${p[9] ?? ''}">${tier(p[9])}</td><td class="l">${p[10] ? esc(p[10]) + (p[11] ? ' · ' + p[11] + ' ' + esc(p[12]) : ' · not played') : '—'}</td><td class="l hide-sm">${esc(p[13] || '')}</td><td class="hide-sm">${p[14] ?? '—'}</td><td class="hide-sm" data-v="${p[16] ?? ''}">${p[16] == null ? '—' : (p[16] > 0 ? '+' : '') + p[16].toFixed(1) + 'M'}</td></tr>`).join('')}</tbody></table></div>`;
+  if (rvView === 'players') body = `<div class="tablewrap"><table data-skey="rv-players"><thead><tr><th>#</th><th>Server</th><th class="l">Alliance</th><th class="l">Player</th><th>Total arena<br><span class="note">3 marches</span></th><th class="l">From</th><th>1st march</th>${has3 ? '<th class="hide-sm">3v3 total</th>' : ''}<th class="hide-sm">Duel total</th><th class="hide-sm">Duel marches</th><th class="hide-sm">1v1 Peak</th><th>Troops</th><th class="l">KO R1</th><th class="l hide-sm">Opponent</th><th class="hide-sm">Change</th></tr></thead><tbody>${
+    rows.map((p, i) => `<tr${ours(p)}><td>${i + 1}</td><td>${p[0]}</td><td class="l">${esc(p[1])}</td><td class="l">${esc(p[2])}</td><td data-v="${p[24] ?? ''}"><b>${mB(p[24], p[27])}</b></td><td class="l">${p[25] || '—'}</td>${nc(p[26], big(p[26], p[18]))}${has3 ? nc(p[19], 0, 'hide-sm') : ''}${nc(p[7], p[18], 'hide-sm')}<td class="hide-sm" data-v="${p[4] ?? ''}">${p[4] == null ? '—' : [p[4], p[5], p[6]].map(v => mB(v, big(v, p[18]))).join(' · ')}</td>${nc(p[8], 0, 'hide-sm')}<td data-v="${p[9] ?? ''}">${tier(p[9])}</td><td class="l">${p[10] ? esc(p[10]) + (p[11] ? ' · ' + p[11] + ' ' + esc(p[12]) : ' · not played') : '—'}</td><td class="l hide-sm">${esc(p[13] || '')}</td><td class="hide-sm" data-v="${p[16] ?? ''}">${p[16] == null ? '—' : (p[16] > 0 ? '+' : '') + p[16].toFixed(1) + 'M'}</td></tr>`).join('')}</tbody></table></div>`;
   else {
     const byS = rvView === 'servers', ag = rvAgg(rows, byS ? (p => p[0]) : (p => p[0] + '|' + p[1]));
-    body = `<div class="tablewrap"><table data-skey="rv-${rvView}"><thead><tr><th>Server</th>${byS ? '<th>Alliances</th>' : '<th class="l">Alliance</th>'}<th>Players</th><th>Avg total arena</th><th>Max total arena</th><th class="hide-sm">Sum total arena</th><th class="hide-sm">With total</th><th>KO R1 W–L</th><th class="hide-sm">Peak top-30</th><th>T10</th><th class="hide-sm">Avg strongest march</th><th class="l">Top player</th></tr></thead><tbody>${
+    body = `<div class="tablewrap"><table data-skey="rv-${rvView}"><thead><tr><th>Server</th>${byS ? '<th>Alliances</th>' : '<th class="l">Alliance</th>'}<th>Players</th><th>Avg total arena</th><th>Max total arena</th><th class="hide-sm">Sum total arena</th><th class="hide-sm">With total</th><th>Avg 1st march</th><th>KO R1 W–L</th><th class="hide-sm">Peak top-30</th><th>T10</th><th class="l">Top player</th></tr></thead><tbody>${
       ag.map(a => { const [s, t] = String(a.k).split('|'); const us = !byS && s === '293' && t === 'JTB';
-        return `<tr${us ? ' style="background:var(--panel-2)"' : ''}><td>${s}</td>${byS ? `<td>${new Set(a.ps.map(p => p[1])).size}</td>` : `<td class="l">${esc(t)}</td>`}<td>${a.n}</td><td data-v="${a.avgT ?? ''}"><b>${mB(a.avgT)}</b></td>${nc(a.maxT)}<td class="hide-sm" data-v="${a.nT ? a.sumT : ''}">${a.nT ? mB(a.sumT) : '—'}</td><td class="hide-sm">${a.nT}/${a.n}</td><td data-v="${a.wins}">${a.played ? a.wins + '–' + (a.played - a.wins) : '—'}</td><td class="hide-sm">${a.peak}</td><td data-v="${a.t10}">${a.tiered ? a.t10 + '/' + a.tiered : '—'}</td><td class="hide-sm" data-v="${a.avg ?? ''}">${mB(a.avg)}</td><td class="l">${esc(a.top[2])}</td></tr>`; }).join('')}</tbody></table></div>`;
+        return `<tr${us ? ' style="background:var(--panel-2)"' : ''}><td>${s}</td>${byS ? `<td>${new Set(a.ps.map(p => p[1])).size}</td>` : `<td class="l">${esc(t)}</td>`}<td>${a.n}</td><td data-v="${a.avgT ?? ''}"><b>${mB(a.avgT)}</b></td>${nc(a.maxT)}<td class="hide-sm" data-v="${a.nT ? a.sumT : ''}">${a.nT ? mB(a.sumT) : '—'}</td><td class="hide-sm">${a.nT}/${a.n}${a.n3 ? ` (${a.n3} 3v3)` : ''}</td>${nc(a.avgM1)}<td data-v="${a.wins}">${a.played ? a.wins + '–' + (a.played - a.wins) : '—'}</td><td class="hide-sm">${a.peak}</td><td data-v="${a.t10}">${a.tiered ? a.t10 + '/' + a.tiered : '—'}</td><td class="l">${esc(a.top[2])}</td></tr>`; }).join('')}</tbody></table></div>`;
   }
   const seg = (v, l) => `<button class="btn small" data-rv="${v}" aria-pressed="${rvView === v}" style="${rvView === v ? 'background:var(--accent);color:var(--bg);border-color:var(--accent)' : ''}">${l}</button>`;
-  $('#view-rivals').innerHTML = `<div class="panel c12"><div class="filters"><h3 style="margin:0">Rivals <span class="note">Champion Duel Knockout reports + Arena Peak Match · captured ${esc(RV.dates[RV.dates.length - 1])}</span></h3>
+  $('#view-rivals').innerHTML = `<div class="panel c12"><div class="filters"><h3 style="margin:0">Rivals <span class="note">arena power from Champion Duel + Arena · last capture ${esc(RV.dates[RV.dates.length - 1])}</span></h3>
     ${seg('players', 'Players')}${seg('alliances', 'Alliances')}${seg('servers', 'Servers')}
     <select id="rvsrv"><option value="all">All servers</option>${srvs.map(s => `<option value="${s}">Server ${s}</option>`).join('')}</select>
     <select id="rval"><option value="all">All alliances</option>${tags.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
-    <select id="rvsrc"><option value="all">All sources</option><option value="ko">Champion Duel KO</option><option value="peak">Peak Match top 30</option><option value="other">Other servers only</option></select>
+    <select id="rvsrc"><option value="all">All sources</option><option value="ko">Champion Duel KO</option><option value="3v3">Arena 3v3</option><option value="peak">Arena 1v1 Peak top 30</option><option value="other">Other servers only</option></select>
     <input id="rvq" placeholder="Search player or alliance" value="${esc(q)}" style="background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px">
     <span class="count">${rows.length} players</span></div>${body}
-    <p class="count" style="margin:10px 0 0"><b>Total arena</b> = all three marches added together, from each player's Knockout round-1 report. Players move weapons and gear between marches to win 2 of 3, so one march alone understates or overstates them; ranking and alliance/server averages use the total. <b>March 1–3</b> are the three lineups. <b>Peak 1st march</b> is the single lineup Arena → Peak Match shows (servers 293 + 300, top 30) - one march only, so Peak-only players have no total yet and sort to the bottom. ~ marks values the game shows only to 0.1B. Troops = troop tier from the battle report or Peak Match badge. Groups G and H hadn't fought yet at capture time.</p></div>`;
+    <p class="count" style="margin:10px 0 0"><b>Total arena</b> = all three marches added together. <b>From 3v3</b> = the player's own Arena 3v3 lineup (best source); <b>From Duel</b> = their Champion Duel Knockout marches, where weapons are spread across the three to win 2 of 3 head-to-heads. <b>1st march</b> = 3v3 march 1, else the Arena 1v1 Peak Match lineup, else duel march 1. Players with only a 1st march have no total yet and sort to the bottom. ~ marks values the game shows only to 0.1B.</p></div>`;
   const v = $('#view-rivals');
   v.querySelectorAll('[data-rv]').forEach(b => b.onclick = () => { rvView = b.dataset.rv; ls.set('jtb-rv', rvView); renderRivals(); sortable(); });
   $('#rvsrv').value = rvSrv; $('#rvsrv').onchange = e => { rvSrv = e.target.value; renderRivals(); sortable(); };
