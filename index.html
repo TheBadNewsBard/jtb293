@@ -580,8 +580,9 @@ function renderChampion(){
   // Arena power across all three marches, from the Knockout reports on the Rivals tab (players swap gear between marches)
   const rvMap = new Map(RV.players.map(p => [p[0] + '|' + p[2], p])), arena3 = r => { const p = rvMap.get(r[4] + '|' + r[1]); return p && p[7] != null ? p[7] : null; };
   // 1st march: Knockout report march 1, else our own roster's Arena Power (JTB members, one march), else Peak Match
-  const jtbArena = new Map(latest.filter(m => m.arena).map(m => [m.name, m.arena / 1e6]));
-  const arena1 = r => { const p = rvMap.get(r[4] + '|' + r[1]); if (p && p[4] != null) return p[4]; if (r[4] === 293 && r[2] === 'JTB' && jtbArena.has(r[1])) return jtbArena.get(r[1]); return p && p[8] != null ? p[8] : null; };
+  const fold = n => String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();   // WestPLAŸ VII = WestPLAY VII
+  const jtbArena = new Map(latest.filter(m => m.arena).map(m => [fold(m.name), m.arena / 1e6]));
+  const arena1 = r => { const p = rvMap.get(r[4] + '|' + r[1]); if (p && p[4] != null) return p[4]; if (r[4] === 293 && r[2] === 'JTB' && jtbArena.has(fold(r[1]))) return jtbArena.get(fold(r[1])); return p && p[8] != null ? p[8] : null; };
   const cv = r => cdSort === 'arena' ? arena3(r) : cdSort === 'arena1' ? arena1(r) : r[i];
   const nv = v => v == null || v === '' ? null : v;
   const rows = CD.cd.filter(r => (cdAl === 'all' || r[2] === cdAl) && (cdSv === 'all' || String(r[4]) === cdSv) && (!q || r[1].toLowerCase().includes(q))).sort((a,b) => { const x = nv(cv(a)), y = nv(cv(b)); if (x == null || y == null) return (x == null) - (y == null); return (typeof x==='string' ? x.localeCompare(y, undefined, {numeric:true, sensitivity:'base'}) : x-y) * cdDir || a[4]-b[4] || a[0]-b[0]; });
