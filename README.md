@@ -9,7 +9,7 @@ Read-only dashboard for the JTB alliance (Last Z: Survival Shooter, server 293):
 ## Layout
 - `index.html` - the published board (generated; do not edit).
 - `board_template.html` - the page source; `/*__DATA__*/`, `/*__READONLY__*/`, `/*__TITLE__*/` and `/*__API_URL__*/` are filled in by `build_board.py` (kept with the private data store).
-- `worker/` - the Cloudflare Worker that takes availability / slot changes from the page and hands them to the tracker's Apps Script; `node worker/test.mjs` runs its unit tests, `worker/e2e.mjs` drives the page against it with Playwright.
+- `worker/` - the Cloudflare Worker (also `POST /clear`, behind the Canyon tab's officer-only **Clear all votes…** button) that takes availability / slot changes from the page and hands them to the tracker's Apps Script; `node worker/test.mjs` runs its unit tests, `worker/e2e.mjs` and `worker/e2e_clear.mjs` drive the page against it with Playwright.
 
 ## How the team split works
 One-session voters are placed first, then members who can make either session, each group strongest first on the chosen measure. Only the top `C7` starters per team count toward the balance - subs never do. A member who could play either side goes where they would make the starting lineup, then to the team with the weaker starters, and finally to the team with fewer players. The page mirrors that rule in `recompute()` so an edit previews instantly; the sheet's `W17` array formula is the source of truth.

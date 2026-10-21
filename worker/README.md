@@ -16,3 +16,11 @@ which applies them to the Canyon Teams sheet (the source of truth) and pushes th
 ## Smoke test
     curl https://jtb293-board.<sub>.workers.dev/            -> {"service":"JTB 293 board API",...}
     curl -H "X-Code: <member code>" .../whoami             -> {"role":"member"}
+
+## Clearing votes for a new week
+The Canyon tab's **Clear all votes…** button (officer code) calls `POST /clear`. The Worker queues a "No vote" change for
+every member who has a vote (and "auto" for every manual slot when that box is ticked), and strips the vote part of any
+change still waiting, so last week's picks cannot land after the reset. The sheet applies them through the normal
+`applyBoardEdits` path within a minute; votes sent after the reset queue behind it. T10 picks are left alone (the sheet's
+Reset selections box in Canyon Teams C15 still clears everything, T10 included). `node worker/e2e_clear.mjs` drives the
+button in a headless browser (`DATA=` a board_data.json).

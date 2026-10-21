@@ -198,6 +198,14 @@ tbody tr { cursor: pointer; }
 .edit input { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; font-family: var(--body); text-transform: none; letter-spacing: 0; color: var(--fg); min-width: 0; }
 .edit select { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; font-family: var(--body); text-transform: none; letter-spacing: 0; color: var(--fg); }
 .edit .hint { grid-column: 1 / -1; font-size: 12px; color: var(--fg-2); font-family: var(--body); text-transform: none; letter-spacing: 0; }
+.clearbox { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line-strong); }
+.clearbox label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-3); font-family: var(--display); font-weight: 600; }
+.clearbox label.chk { flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; font-family: var(--body); font-size: 13px; font-weight: 400; color: var(--fg); padding-bottom: 6px; }
+.clearbox input[type=password], .clearbox input[type=text] { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; font-family: var(--body); color: var(--fg); min-width: 0; width: 160px; }
+.clearbox .hint { flex-basis: 100%; font-size: 12px; color: var(--fg-2); }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.danger.solid { background: var(--bad); color: #fff; }
+.btn:disabled { opacity: .5; cursor: default; }
 .slot .n.pending::after { content: "⟳"; color: var(--warn); margin-left: 4px; font-size: 11px; }
 .qedit { background: none; border: 0; color: var(--fg-3); cursor: pointer; padding: 0 2px; font-size: 12px; }
 .qedit:hover { color: var(--accent); }
@@ -507,7 +515,8 @@ function renderCanyon(){
         <div><div class="mini" style="justify-content:space-between"><b style="color:var(--t2)">Team 2</b><span>${fmt(cs.s2)}</span></div><div class="gapbar"><i style="left:0;width:${(cs.s2/gmax*100).toFixed(1)}%;background:var(--t2)"></i></div></div></div>
       <div class="eyebrow" style="margin-top:14px">Availability · ${total} members</div>
       <div class="avail">${Object.entries(votes).filter(([k,v])=>v).map(([k,v]) => `<i style="width:${(v/total*100).toFixed(2)}%;background:${vcol[k]}" data-tip="${k}|${v} members (${(v/total*100).toFixed(0)}%)"></i>`).join('')}</div>
-      <div class="legend">${Object.entries(votes).map(([k,v]) => `<span><i style="background:${vcol[k]}"></i>${k} · ${v}</span>`).join('')}${overrides.length?`<span style="margin-left:auto;color:var(--warn)">✎ ${overrides.length} manual override${overrides.length>1?'s':''}</span>`:''}</div></div>
+      <div class="legend">${Object.entries(votes).map(([k,v]) => `<span><i style="background:${vcol[k]}"></i>${k} · ${v}</span>`).join('')}${overrides.length?`<span style="margin-left:auto;color:var(--warn)">✎ ${overrides.length} manual override${overrides.length>1?'s':''}</span>`:''}</div>
+      ${canClear() ? `${clearOpen ? clearForm(total - votes['No vote'], overrides.length) : `<div class="filters" style="margin:12px 0 0"><button class="btn small danger" id="clear-open">Clear all votes…</button><span style="font-size:12px;color:var(--fg-3)">Start a new week's poll: everyone goes back to No vote.</span></div>`}` : ''}</div>
     ${teamCard('T1', 'Team 1', M.t1)}${teamCard('T2', 'Team 2', M.t2)}
     <div class="panel c12"><h3>No vote yet · ${noVote.length} <span class="note">strongest first; each one voting 18:00 or Both would take a Team 1 starter spot</span></h3>
       <div class="filters"><button class="btn small" id="copy-nudge">Copy names</button><button class="btn small" id="copy-nudge-msg">Copy poll reminder</button></div>
@@ -515,6 +524,7 @@ function renderCanyon(){
   </div>`;
   $('#view-canyon').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const k = b.dataset.copy, T = cs.teams[k]; copy(`${k==='T1'?'TEAM 1':'TEAM 2'} (${k==='T1'?M.t1:M.t2})\nStarters:\n${T.filter(p=>p.starter).map((p,i)=>`${i+1}. ${p.name}`).join('\n')}\nSubstitutes:\n${T.filter(p=>!p.starter).map((p,i)=>`${i+1}. ${p.name}`).join('\n')}`, 'Lineup copied'); });
   $('#copy-nudge').onclick = () => copy(noVote.map(c => c.name).join(', '), 'Names copied');
+  wireClear();
   $('#copy-nudge-msg').onclick = () => copy(`Canyon Clash poll: we still need a vote from ${noVote.length} members. Please pick 18:00, 23:00, Both or N/A so we can set the teams. Missing: ${noVote.map(c => c.name).join(', ')}`, 'Reminder copied');
 }
 
@@ -727,6 +737,49 @@ document.addEventListener('click', e => {
 });
 
 // ---------- editing: apply locally, preview the new split, queue the change for the sheet
+// ---------- clear all votes (new week's poll). Officers only on the website; the command board sends it through Drive.
+let clearOpen = false, clearBusy = false;
+const canClear = () => WEB || !READONLY;
+function clearForm(nVotes, nOver){
+  return `<div class="clearbox" id="clearbox">
+    ${WEB ? `<label>Officer passcode<input id="clr-code" type="password" autocomplete="off" value="${esc(role === 'officer' ? code : '')}" placeholder="officer code"></label><label>Your name<input id="clr-by" type="text" maxlength="40" autocomplete="off" value="${esc(who)}" placeholder="who is clearing"></label>` : ''}
+    <label class="chk"><input type="checkbox" id="clr-slots" ${nOver ? '' : 'disabled'}> Also put ${nOver} manual slot${nOver===1?'':'s'} back on auto</label>
+    <button class="btn danger solid" id="clr-go" ${clearBusy || (!nVotes && !nOver) ? 'disabled' : ''}>${clearBusy ? 'Clearing…' : 'Clear ' + nVotes + ' vote' + (nVotes===1?'':'s')}</button>
+    <button class="btn" id="clr-cancel">Cancel</button>
+    <div class="hint">Everyone goes back to <b>No vote</b> so this week's poll starts clean. Votes members send after this land on top of the reset; changes still waiting from before are dropped. T10 picks are kept (the sheet's Reset selections box clears those too). This cannot be undone from the board.</div></div>`;
+}
+function wireClear(){
+  const o = $('#clear-open'); if (o) o.onclick = () => { clearOpen = true; renderAll(); const f = $('#clr-code'); if (f && !f.value) f.focus(); };
+  const c = $('#clr-cancel'); if (c) c.onclick = () => { clearOpen = false; renderAll(); };
+  const g = $('#clr-go'); if (g) g.onclick = () => clearVotes(!!($('#clr-slots') && $('#clr-slots').checked));
+}
+async function clearVotes(slots){
+  if (clearBusy) return;
+  const targets = D.canyon.filter(c => c.avail || (slots && c.manual));
+  if (WEB) {
+    const k = ($('#clr-code').value || '').trim(), by = ($('#clr-by').value || '').trim();
+    if (!k) { toast('Enter the officer passcode'); return; }
+    if (by) { who = by; ls.set('jtb-who', who); }
+    clearBusy = true; renderAll();
+    try {
+      const r = await fetch(API_URL + '/clear', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Code': k }, body: JSON.stringify({ slots, by: who || undefined }) });
+      const j = await r.json().catch(() => ({}));
+      clearBusy = false;
+      if (!r.ok) { toast(r.status === 401 ? 'That passcode is not recognised' : r.status === 403 ? 'Clearing votes needs the officer code' : 'Not cleared: ' + (j.error || r.status)); renderAll(); return; }
+      code = k; ls.set('jtb-code', code); role = 'officer'; codeState = 'ok';
+      targets.forEach(c => { const p = pending[c.name] = pending[c.name] || {}; if (c.avail) { c.avail = ''; p.avail = ''; } else delete p.avail; if (slots && c.manual) { c.manual = false; c.override = ''; p.slot = 'auto'; } else if (slots) delete p.slot; });
+      Object.keys(pending).forEach(n => { const p = pending[n]; if (!targets.some(c => c.name === n)) { delete p.avail; if (slots) delete p.slot; } if (p.avail === undefined && p.slot === undefined) delete pending[n]; });
+      clearOpen = false; recompute(); renderAll(); updateSync();
+      toast(`Cleared ${j.votes} vote${j.votes===1?'':'s'}${slots ? ' and ' + j.overrides + ' slot' + (j.overrides===1?'':'s') : ''} · the sheet follows within a minute`);
+    } catch (err) { clearBusy = false; toast('Could not reach the board API'); renderAll(); }
+    return;
+  }
+  // command board: one batch of ordinary edits through the Drive inbox
+  queue = queue.map(x => { const y = { ...x }; delete y.avail; if (slots) delete y.slot; return y; }).filter(y => y.avail !== undefined || y.slot !== undefined);   // stale picks still queued here
+  targets.forEach(c => { const e = {}; if (c.avail) { e.avail = ''; c.avail = ''; } if (slots && c.manual) { e.slot = 'auto'; c.manual = false; c.override = ''; } pending[c.name] = Object.assign(pending[c.name] || {}, e); queue.push({ name: c.name, ...e }); });
+  clearOpen = false; recompute(); clearTimeout(flushT); flushT = setTimeout(flush, 300); renderAll(); updateSync();
+  toast('Cleared ' + targets.length + ' members');
+}
 const pending = {};          // name -> {avail?, slot?} not yet confirmed by board_data.json
 let queue = [], flushT = null, mcp = null, syncState = { mode: 'snapshot', at: null, err: null };
 function autoSlotOf(c){ const keep = c.manual; c.manual = false; recompute(); const s = c.final || 'not placed'; c.manual = keep; recompute(); return s; }

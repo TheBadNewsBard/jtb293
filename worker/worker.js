@@ -15,6 +15,10 @@
  *   POST /edits/ack            X-Sync-Key   {ids:[...]}  remove applied edits, move them to the log
  *   GET  /log                  last 200 applied changes (name, field, value, by, when)
  *   GET  /whoami               X-Code       {role: "officer" | "member"}  (lets the page check a code)
+ *   POST /clear                X-Code (officer)  {slots?, by?}  start a new poll: queue "No vote" for every member
+ *                              who has one (and "auto" for every manual slot when slots is true), and drop the vote
+ *                              (and slot) part of any change still waiting, so last week's choices cannot land
+ *                              after the reset. Votes sent after the reset queue behind it and win.
  */
 const AVAIL = ['', '18:00 only', '23:00 only', 'Both', 'N/A'];
 const MAX_PENDING = 300;   // queue cap (see /edit); the sheet drains the queue every minute
@@ -63,6 +67,37 @@ export default {
         if (pending.keys.length > MAX_PENDING) return json({ error: 'too many pending changes, try again in a minute' }, 429, { 'Retry-After': '60' });
         await env.BOARD.put('edit:' + out.id, JSON.stringify(out), { expirationTtl: 60 * 60 * 24 * 7 });
         return json({ ok: true, edit: out });
+      }
+      if (path === '/clear' && req.method === 'POST') {
+        const r = role(env, req.headers.get('X-Code'));
+        if (!r) return json({ error: 'bad code' }, 401);
+        if (r !== 'officer') return json({ error: 'clearing votes needs the officer code' }, 403);
+        let b = {}; try { b = await req.json(); } catch (x) { /* empty body = votes only */ }
+        const slots = b.slots === true, by = String(b.by || 'officer').slice(0, 40);
+        const data = await env.BOARD.get('data', 'json');
+        if (!data) return json({ error: 'no data yet' }, 409);
+        // 1. Changes still waiting for the sheet: strip the parts the reset replaces, so they cannot land after it.
+        const list = await env.BOARD.list({ prefix: 'edit:', limit: 1000 });
+        const waiting = (await Promise.all(list.keys.map(async k => [k.name, await env.BOARD.get(k.name, 'json')]))).filter(x => x[1]);
+        let dropped = 0;
+        for (const [k, e] of waiting) {
+          const had = e.avail !== undefined || (slots && e.slot !== undefined);
+          if (!had) continue;
+          delete e.avail; if (slots) delete e.slot;
+          if (e.slot === undefined) await env.BOARD.delete(k); else await env.BOARD.put(k, JSON.stringify(e), { expirationTtl: 60 * 60 * 24 * 7 });
+          dropped++;
+        }
+        // 2. One change per member who has something to clear (members with nothing to clear cost no KV writes).
+        const t = Date.now(), at = new Date(t).toISOString(); let votes = 0, overrides = 0, n = 0;
+        for (const c of data.canyon) {
+          const out = {};
+          if (c.avail) { out.avail = ''; votes++; }
+          if (slots && c.manual) { out.slot = 'auto'; overrides++; }
+          if (!Object.keys(out).length) continue;
+          const id = t.toString(36) + '-' + String(n++).padStart(3, '0') + Math.random().toString(36).slice(2, 5);
+          await env.BOARD.put('edit:' + id, JSON.stringify({ id, name: c.name, ...out, by: 'Clear votes · ' + by, role: r, at, bulk: true }), { expirationTtl: 60 * 60 * 24 * 7 });
+        }
+        return json({ ok: true, votes, overrides, dropped, at });
       }
       if (path === '/edits' && req.method === 'GET') {
         if (!safeEq(req.headers.get('X-Sync-Key'), env.SYNC_KEY)) return json({ error: 'forbidden' }, 403);

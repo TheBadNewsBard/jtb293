@@ -28,4 +28,24 @@ const capped = await call('/edit', { method: 'POST', headers: { 'X-Code': 'off12
 ok(capped[0] === 429 && /too many pending/.test(capped[1].error), 'queue cap ' + JSON.stringify(capped));
 for (let i = 0; i < 301; i++) kv.delete('edit:bulk' + i);
 ok((await call('/edit', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ name: 'BB', avail: 'Both' }) }))[1].ok, 'accepts again once drained');
+// clear votes: officer only; queues "No vote" for voters (+ auto for overrides), strips waiting votes
+for (const k of [...kv.keys()]) if (k.startsWith('edit:')) kv.delete(k);
+kv.set('data', JSON.stringify({ history: [], canyon: [{ name: 'Kathi', avail: 'Both' }, { name: 'BB', avail: '', manual: true }, { name: 'Zed', avail: 'N/A', manual: true }, { name: 'Quiet', avail: '' }], meta: {}, dates: [], rules: [] }));
+await call('/edit', { method: 'POST', headers: { 'X-Code': 'mem456' }, body: JSON.stringify({ name: 'Quiet', avail: '18:00 only' }) });   // stale vote still waiting
+await call('/edit', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ name: 'BB', avail: 'Both', slot: 'T1 Sub' }) });
+ok((await call('/clear', { method: 'POST', headers: { 'X-Code': 'mem456' }, body: '{}' }))[0] === 403, 'member cannot clear');
+ok((await call('/clear', { method: 'POST', body: '{}' }))[0] === 401, 'clear needs a code');
+const [cs, cj] = await call('/clear', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ by: 'Joe' }) });
+ok(cs === 200 && cj.votes === 2 && cj.overrides === 0 && cj.dropped === 2, 'clear votes ' + JSON.stringify(cj));
+let q = (await call('/edits', { headers: { 'X-Sync-Key': 'sync-secret' } }))[1].edits;
+ok(q.length === 3 && !q.some(e => e.name === 'Quiet') && q.find(e => e.name === 'BB' && e.slot === 'T1 Sub' && e.avail === undefined), 'stale votes stripped, slot kept ' + JSON.stringify(q));
+ok(q.filter(e => e.bulk).map(e => e.name + '=' + JSON.stringify(e.avail)).join() === 'Kathi="",Zed=""', 'clears queued ' + JSON.stringify(q));
+await new Promise(r => setTimeout(r, 5));
+await call('/edit', { method: 'POST', headers: { 'X-Code': 'mem456' }, body: JSON.stringify({ name: 'Kathi', avail: '23:00 only' }) });
+q = (await call('/edits', { headers: { 'X-Sync-Key': 'sync-secret' } }))[1].edits;
+ok(q[q.length - 1].name === 'Kathi' && q[q.length - 1].avail === '23:00 only', 'a new vote queues after the clear');
+for (const k of [...kv.keys()]) if (k.startsWith('edit:')) kv.delete(k);
+const [, cj2] = await call('/clear', { method: 'POST', headers: { 'X-Code': 'off123' }, body: JSON.stringify({ slots: true }) });
+q = (await call('/edits', { headers: { 'X-Sync-Key': 'sync-secret' } }))[1].edits;
+ok(cj2.votes === 2 && cj2.overrides === 2 && q.length === 3 && q.find(e => e.name === 'BB').slot === 'auto' && q.find(e => e.name === 'BB').avail === undefined && q.find(e => e.name === 'Zed').slot === 'auto', 'clear slots too ' + JSON.stringify(q));
 console.log(fails ? fails + ' FAILURES' : 'WORKER TESTS PASSED');
