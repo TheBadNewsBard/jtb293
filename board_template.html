@@ -564,7 +564,7 @@ function renderCanyon(){
 // ---------- trends (metric picker: hero / vehicle / science / structure / arena / troops / kills / total, singly or combined)
 const TMET = [['hero','Hero'],['veh','Vehicle'],['tech','Science'],['struct','Structure'],['arena','Arena'],['troop','Troops'],['kills','Kills'],['total','Total']];
 let TM = (ls.get('jtb-tm') || 'hero,veh').split(',').filter(k => TMET.some(t => t[0] === k)); if (!TM.length) TM = ['hero','veh'];
-let TCOMB = ls.get('jtb-tcomb') !== '0', TFROM = ls.get('jtb-tfrom') || '';
+let TCOMB = ls.get('jtb-tcomb') !== '0', TFROM = ls.get('jtb-tfrom') || '', TALL = ls.get('jtb-tall') !== '0';
 const tv = m => TM.reduce((s,k) => s + ((m && m[k]) || 0), 0);
 const tl = () => TM.map(k => TMET.find(t => t[0] === k)[1]).join(' + ');
 const tok = q => q && TM.every(k => k !== 'arena' || q.arena);
@@ -581,7 +581,7 @@ function renderPowerTrends(){
   const fd = dates.find(d => byDate[d].some(r => tok(r))) || dates[0];
   const from = (TFROM && dates.includes(TFROM) && TFROM < LATEST) ? (TFROM < fd ? fd : TFROM) : fd, fMap = {}; (byDate[from]||[]).forEach(r => fMap[r.name] = r);
   const delta = map => latest.filter(m => tok(map[m.name])).map(m => ({ label: m.name, v: tv(m) - tv(map[m.name]), sub: pct(tv(m), tv(map[m.name])) })).sort((a,b) => b.v - a.v);
-  const both = delta(fMap), up = both.filter(x => x.v > 0).slice(0, 10), down = both.filter(x => x.v < 0).slice(-10).reverse();
+  const both = delta(fMap), gainAll = both.filter(x => x.v > 0), loseAll = both.filter(x => x.v < 0).reverse(), flat = both.filter(x => x.v === 0).length, up = TALL ? gainAll : gainAll.slice(0, 10), down = TALL ? loseAll : loseAll.slice(0, 10);
   const fRows = (byDate[from]||[]).filter(r => tok(r)), nRows = latest.filter(r => tok(r));
   const tFrom = sum(fRows, tv), tNow = sum(nRows, tv), stay = latest.filter(m => tok(m) && tok(fMap[m.name]));
   const sFrom = sum(stay, m => tv(fMap[m.name])), sNow = sum(stay, tv);
@@ -597,6 +597,7 @@ function renderPowerTrends(){
       ${TMET.map(([k,l]) => `<button class="btn small" data-tm="${k}" aria-pressed="${TM.includes(k)}" style="${TM.includes(k)?'background:var(--accent);color:var(--bg);border-color:var(--accent)':''}">${l}</button>`).join('')}
       <button class="btn small" data-tpre="hero,veh">Hero + vehicle</button>
       <label class="count"><input type="checkbox" id="tcomb" ${TCOMB?'checked':''}> combine into one line</label>
+      <label class="count"><input type="checkbox" id="tall" ${TALL?'checked':''}> show all players in gains / declines</label>
       <label class="count">From <select id="tfrom">${dates.slice(0,-1).filter(d => d >= fd).map(d => `<option value="${d}" ${d===from?'selected':''}>${dShort(d)}${d===fd?' (first)':''}</option>`).join('')}</select> to ${dShort(LATEST)}</label></div>
       ${TM.includes('arena') ? `<p class="count" style="margin:8px 0 0">Arena power is only recorded from ${dShort(dates.find(d => byDate[d].some(r => r.arena)) || LATEST)} on, so its history starts there.</p>` : ''}</div>
     <div class="panel c8"><h3>Alliance ${esc(tl())} · ${dShort(from)} to ${dShort(LATEST)}</h3>${pts.length > 1 ? lineChart(series, lab, {label:'Alliance '+tl()+' by snapshot'}) : '<p class="count">Only one snapshot has this measure so far.</p>'}
@@ -608,8 +609,8 @@ function renderPowerTrends(){
       <div class="delta"><b>${signed(sNow - sFrom)}</b> ${pct(sNow, sFrom)} · avg ${signed((sNow - sFrom) / Math.max(1, stay.length))} each</div>
       <div class="eyebrow" style="margin-top:14px">Roster turnover</div>
       <div class="delta">${fRows.length} → ${nRows.length} members · joined ${joined.length}, left ${left.length} · net ${signed((tNow - tFrom) - (sNow - sFrom))}</div></div>
-    <div class="panel c6"><h3>Biggest gains since ${dShort(from)} ${note}</h3>${up.length ? divergeBars(up, {label:'Top gainers'}) : '<p class="count">No gains recorded.</p>'}</div>
-    <div class="panel c6"><h3>Declines since ${dShort(from)} ${note}</h3>${down.length ? divergeBars(down, {label:'Top decliners'}) : '<p style="color:var(--fg-3)">Nobody lost power on this measure.</p>'}</div>
+    <div class="panel c6"><h3>${TALL ? 'All gains' : 'Biggest gains'} since ${dShort(from)} · ${up.length}${TALL ? '' : ' of ' + gainAll.length} ${note}</h3>${up.length ? divergeBars(up, {label:'Top gainers'}) : '<p class="count">No gains recorded.</p>'}</div>
+    <div class="panel c6"><h3>${TALL ? 'All declines' : 'Declines'} since ${dShort(from)} · ${down.length}${TALL ? '' : ' of ' + loseAll.length} ${note}</h3>${down.length ? divergeBars(down, {label:'Top decliners'}) : '<p style="color:var(--fg-3)">Nobody lost power on this measure.</p>'}</div>
     <div class="panel c6"><h3>Joined since ${dShort(from)} · ${joined.length}</h3><div class="mini">${joined.map(m => `<span data-member="${esc(m.name)}" style="cursor:pointer">${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
     <div class="panel c6"><h3>Left since ${dShort(from)} · ${left.length}</h3><div class="mini">${left.map(m => `<span>${esc(m.name)} <span style="color:var(--fg-3)">${fmtM(m.hv)}</span></span>`).join('') || '<span>None</span>'}</div></div>
   </div>`;
@@ -617,6 +618,7 @@ function renderPowerTrends(){
   v.querySelectorAll('[data-tm]').forEach(b => b.onclick = () => { const k = b.dataset.tm; TM = TM.includes(k) ? (TM.length > 1 ? TM.filter(x => x !== k) : TM) : TMET.map(t=>t[0]).filter(x => TM.includes(x) || x === k); save(); });
   v.querySelectorAll('[data-tpre]').forEach(b => b.onclick = () => { TM = b.dataset.tpre.split(','); save(); });
   $('#tcomb').onchange = e => { TCOMB = e.target.checked; ls.set('jtb-tcomb', TCOMB ? '1' : '0'); renderTrends(); };
+  $('#tall').onchange = e => { TALL = e.target.checked; ls.set('jtb-tall', TALL ? '1' : '0'); renderTrends(); };
   $('#tfrom').onchange = e => { TFROM = e.target.value; ls.set('jtb-tfrom', TFROM); renderTrends(); };
 }
 
