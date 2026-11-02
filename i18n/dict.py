@@ -458,6 +458,10 @@ click to edit|clic para editar|cliquer pour modifier|คลิกเพื่อ
 Top gainers|Mayores subidas|Plus fortes hausses|เพิ่มขึ้นมากที่สุด
 Top decliners|Mayores bajadas|Plus fortes baisses|ลดลงมากที่สุด
 Search name|Buscar nombre|Chercher un nom|ค้นหาชื่อ
+Swipe or drag to see more|Desliza o arrastra para ver más|Glissez ou faites glisser pour voir la suite|ปัดหรือลากเพื่อดูเพิ่ม
+Scroll left|Desplazar a la izquierda|Défiler vers la gauche|เลื่อนไปทางซ้าย
+Scroll right|Desplazar a la derecha|Défiler vers la droite|เลื่อนไปทางขวา
+Scroll the table|Desplazar la tabla|Faire défiler le tableau|เลื่อนตาราง
 Sort|Ordenar|Trier|เรียง
 tag or name|etiqueta o nombre|tag ou nom|แท็กหรือชื่อ
 Click to switch|Clic para cambiar|Cliquer pour changer|คลิกเพื่อสลับ
